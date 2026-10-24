@@ -5,6 +5,7 @@
     {
       name: '0xshinky',
       platform: 'Windows',
+      icon: '/products/web/icon.png',
       page: '/desktop/',
       preview: '/products/web/index.html',
       release: '/api/desktop-update',
@@ -13,6 +14,7 @@
     {
       name: '0xshinky Android',
       platform: 'Android',
+      icon: '/products/android/icon.png',
       page: '/android/',
       preview: '/products/android/index.html',
       release: '/api/android-update',
@@ -67,9 +69,20 @@
   };
 
   const makeProductRow = product => {
-    const row = document.createElement('article');
-    row.className = 'web-product-row';
-    row.dataset.productSearch = `${product.name} ${product.platform}`.toLocaleLowerCase();
+    const card = document.createElement('article');
+    card.className = 'web-product-card';
+    card.dataset.productSearch = `${product.name} ${product.platform}`.toLocaleLowerCase();
+
+    const main = document.createElement('div');
+    main.className = 'web-product-main';
+
+    const artwork = document.createElement('div');
+    artwork.className = 'web-product-artwork';
+    const icon = document.createElement('img');
+    icon.src = product.icon;
+    icon.alt = '';
+    icon.loading = 'lazy';
+    artwork.append(icon);
 
     const info = document.createElement('div');
     info.className = 'web-product-info';
@@ -82,7 +95,7 @@
     const platform = document.createElement('span');
     platform.className = 'web-product-platform';
     platform.textContent = product.platform;
-    info.append(name, platform);
+    info.append(platform, name);
 
     const release = document.createElement('span');
     release.className = 'web-product-release';
@@ -96,11 +109,13 @@
     preview.textContent = 'Preview';
     const download = document.createElement('a');
     download.href = product.download;
+    download.className = 'web-product-download';
     download.textContent = 'Tải ứng dụng';
     actions.append(preview, download);
 
-    row.append(info, release, actions);
-    return row;
+    main.append(artwork, info);
+    card.append(main, release, actions);
+    return card;
   };
 
   const installProductsTab = () => {
@@ -140,7 +155,7 @@
 
     const search = document.getElementById('searchInput');
     const installedToggle = document.getElementById('installedToggleWrap');
-    const productRows = Array.from(productsView.querySelectorAll('.web-product-row'));
+    const productRows = Array.from(productsView.querySelectorAll('.web-product-card'));
     const filterProducts = () => {
       if (window.currentViewMode !== 'products') return;
       const query = (search?.value || '').trim().toLocaleLowerCase();
