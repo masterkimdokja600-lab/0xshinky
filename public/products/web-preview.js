@@ -5,20 +5,24 @@
     {
       name: '0xshinky',
       platform: 'Windows',
+      summary: 'Thư viện game và bản Việt hóa được cập nhật trực tiếp từ nguồn.',
       icon: '/products/web/icon.png',
       page: '/desktop/',
       preview: '/products/web/index.html',
       release: '/api/desktop-update',
-      download: '/api/desktop-update?download=1'
+      download: '/api/desktop-update?download=1',
+      downloadLabel: 'Tải cho Windows'
     },
     {
       name: '0xshinky Android',
       platform: 'Android',
+      summary: 'Phiên bản Android riêng, với preview web và APK từ bản phát hành mới nhất.',
       icon: '/products/android/icon.png',
       page: '/android/',
       preview: '/products/android/index.html',
       release: '/api/android-update',
-      download: '/api/android-update?download=1'
+      download: '/api/android-update?download=1',
+      downloadLabel: 'Tải APK Android'
     }
   ];
 
@@ -91,11 +95,20 @@
     name.className = 'web-product-name';
     name.href = product.page;
     name.textContent = product.name;
+    name.setAttribute('aria-label', `Mở trang sản phẩm ${product.name}`);
 
     const platform = document.createElement('span');
     platform.className = 'web-product-platform';
     platform.textContent = product.platform;
-    info.append(platform, name);
+
+    const productLinkHint = document.createElement('span');
+    productLinkHint.className = 'web-product-link-hint';
+    productLinkHint.innerHTML = 'Chi tiết sản phẩm <span aria-hidden="true">↗</span>';
+    info.append(platform, name, productLinkHint);
+
+    const summary = document.createElement('p');
+    summary.className = 'web-product-summary';
+    summary.textContent = product.summary;
 
     const release = document.createElement('span');
     release.className = 'web-product-release';
@@ -105,16 +118,19 @@
     const actions = document.createElement('div');
     actions.className = 'web-product-actions';
     const preview = document.createElement('a');
+    preview.className = 'web-product-preview';
     preview.href = product.preview;
     preview.textContent = 'Preview';
+    preview.setAttribute('aria-label', `Xem trước ${product.name} trên web`);
     const download = document.createElement('a');
     download.href = product.download;
     download.className = 'web-product-download';
-    download.textContent = 'Tải ứng dụng';
+    download.textContent = product.downloadLabel;
+    download.setAttribute('aria-label', `${product.downloadLabel}: ${product.name}`);
     actions.append(preview, download);
 
     main.append(artwork, info);
-    card.append(main, release, actions);
+    card.append(main, summary, release, actions);
     return card;
   };
 
