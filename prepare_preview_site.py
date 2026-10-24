@@ -117,7 +117,7 @@ def copy_web_assets(source_root: Path, android_dir: Path, web_dir: Path) -> set[
 
     product_links = (
         '<a class="ft-link" href="/products/android/index.html">Android preview</a>\n'
-        '            <a class="ft-link" href="https://gitlab.com/0xshinky/0xshinky-android/-/releases/permalink/latest/downloads/0xshinky-android.apk">Tải APK Android</a>'
+        '            <a class="ft-link" href="/api/android-update?download=1">Tải APK Android</a>'
     )
     footer_column = re.compile(r'(<div class="ft-col">\s*<h3>0xshinky</h3>)', re.IGNORECASE)
     web_html, footer_count = footer_column.subn(r'\1\n            ' + product_links, web_html, count=1)
