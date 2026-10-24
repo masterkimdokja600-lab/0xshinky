@@ -106,6 +106,15 @@ def copy_web_assets(source_root: Path, android_dir: Path, web_dir: Path) -> set[
             files[name] = path
 
     web_html = set_base_href(html, "/products/web/")
+    web_css_tag = '<link rel="stylesheet" href="/products/web-preview.css">'
+    if web_css_tag not in web_html:
+        base_pattern = re.compile(r"(<base\b[^>]*>)", re.IGNORECASE)
+        web_html, count = base_pattern.subn(
+            lambda match: f"{match.group(1)}\n  {web_css_tag}", web_html, count=1
+        )
+        if count != 1:
+            raise SystemExit(f"No <base> element found in {source_root / 'index.html'}")
+
     bridge_tag = '<script src="/products/preview_bridge.js"></script>'
     if bridge_tag not in web_html:
         base_pattern = re.compile(r"(<base\b[^>]*>)", re.IGNORECASE)
@@ -116,13 +125,22 @@ def copy_web_assets(source_root: Path, android_dir: Path, web_dir: Path) -> set[
             raise SystemExit(f"No <base> element found in {source_root / 'index.html'}")
 
     product_links = (
-        '<a class="ft-link" href="/products/android/index.html">Android preview</a>\n'
-        '            <a class="ft-link" href="/api/android-update?download=1">Tải APK Android</a>'
+        '<a class="ft-link" href="/desktop/">0xshinky Windows</a>\n'
+        '            <a class="ft-link" href="/android/">0xshinky Android</a>'
     )
     footer_column = re.compile(r'(<div class="ft-col">\s*<h3>0xshinky</h3>)', re.IGNORECASE)
     web_html, footer_count = footer_column.subn(r'\1\n            ' + product_links, web_html, count=1)
     if footer_count != 1:
         raise SystemExit(f"Could not find the 0xshinky footer column in {source_root / 'index.html'}")
+
+    web_only_script = '<script src="/products/web-preview.js"></script>'
+    if web_only_script not in web_html:
+        body_end = re.compile(r"</body\s*>", re.IGNORECASE)
+        web_html, script_count = body_end.subn(
+            f"  {web_only_script}\n</body>", web_html, count=1
+        )
+        if script_count != 1:
+            raise SystemExit(f"No closing body tag found in {source_root / 'index.html'}")
 
     files["index.html"] = web_html.encode("utf-8")
 

@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#090909" />
+    <meta name="description" content="0xshinky Android — ứng dụng và bản preview được cập nhật từ release mới nhất." />
+    <title>0xshinky Android</title>
+    <link rel="stylesheet" href="/products/site.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="wordmark" href="/" aria-label="0xshinky, trang chủ">0xshinky</a>
+    </header>
+
+    <main class="site-main product-main" data-release-api="/api/android-update">
+      <nav class="breadcrumbs" aria-label="Điều hướng">
+        <a href="/">Sản phẩm</a><span aria-hidden="true">/</span><span>Android</span>
+      </nav>
+      <p class="eyebrow">ANDROID</p>
+      <h1>0xshinky Android</h1>
+      <p class="intro">Bản Android của 0xshinky. Trang preview chạy trên web để xem giao diện; cài ứng dụng Android bằng APK mới nhất.</p>
+
+      <div class="product-actions">
+        <a class="action-link action-link-primary" data-release-download href="/api/android-update?download=1">Tải ứng dụng Android</a>
+        <a class="action-link" href="/products/android/index.html">Mở bản preview</a>
+      </div>
+      <p class="release-line"><span data-release-version>Đang lấy phiên bản mới nhất…</span><span aria-hidden="true"> · </span><span data-release-status>Đang kết nối nguồn phát hành</span></p>
+
+      <dl class="product-details">
+        <div><dt class="detail-label">Nền tảng</dt><dd class="detail-value">Android</dd></div>
+        <div><dt class="detail-label">APK</dt><dd class="detail-value">Tải từ release mới nhất</dd></div>
+        <div><dt class="detail-label">Ngày phát hành</dt><dd class="detail-value"><span data-release-date>Đang tải…</span></dd></div>
+      </dl>
+
+      <section class="preview-section" aria-labelledby="preview-heading">
+        <h2 id="preview-heading">Preview 0xshinky Android</h2>
+        <p>Mở bản giao diện Android đầy đủ trên web để xem cách sản phẩm hoạt động.</p>
+        <a class="preview-open" href="/products/android/index.html">Xem giao diện đầy đủ <span aria-hidden="true">↗</span></a>
+      </section>
+
+      <nav class="product-switch" aria-label="Sản phẩm khác">
+        <a href="/desktop/">0xshinky Windows ↗</a>
+        <a href="/">Tất cả sản phẩm</a>
+      </nav>
+    </main>
+
+    <footer class="site-footer"><span>© <span data-current-year></span> 0xshinky</span></footer>
+    <script src="/products/site.js" defer></script>
+    <script src="/products/product-page.js" defer></script>
+  </body>
+</html>

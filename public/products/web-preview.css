@@ -1,0 +1,11 @@
+#btnFullscreen,
+#gmDownloadBtn,
+#gmSelectFilesBtn {
+  display: none !important;
+}
+
+#gmPreviewAppDownload {
+  display: inline-flex;
+  cursor: pointer;
+  text-decoration: none;
+}

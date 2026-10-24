@@ -6,6 +6,7 @@ const gameTrailer = require('./api/footage');
 const gameCatalog = require('./api/catalog');
 const translationCatalog = require('./api/translations');
 const androidUpdate = require('./api/android-update');
+const desktopUpdate = require('./api/desktop-update');
 
 const root = path.resolve(__dirname, 'public');
 const port = Number(process.env['0XSHINKY_PREVIEW_PORT'] || 4173);
@@ -116,6 +117,33 @@ async function handleAndroidUpdate(req, res, url) {
   await androidUpdate(req, adapter);
 }
 
+async function handleDesktopUpdate(req, res, url) {
+  req.query = Object.fromEntries(url.searchParams.entries());
+  const adapter = {
+    setHeader(name, value) {
+      res.setHeader(name, value);
+    },
+    redirect(destination) {
+      res.writeHead(302, { Location: destination });
+      res.end();
+      return res;
+    },
+    status(statusCode) {
+      return {
+        end() {
+          res.writeHead(statusCode).end();
+          return res;
+        },
+        json(value) {
+          sendJson(res, statusCode, value);
+          return res;
+        }
+      };
+    }
+  };
+  await desktopUpdate(req, adapter);
+}
+
 async function handleStatic(req, res, url) {
   let pathname;
   try {
@@ -164,6 +192,10 @@ http.createServer(async (req, res) => {
     }
     if (url.pathname === '/api/android-update') {
       await handleAndroidUpdate(req, res, url);
+      return;
+    }
+    if (url.pathname === '/api/desktop-update') {
+      await handleDesktopUpdate(req, res, url);
       return;
     }
     if (req.method !== 'GET' && req.method !== 'HEAD') {
