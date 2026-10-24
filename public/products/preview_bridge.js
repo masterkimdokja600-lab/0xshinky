@@ -100,7 +100,8 @@
       if (trailerRequests.has(id)) return trailerRequests.get(id);
       const request = (async () => {
         try {
-          const response = await fetch(`/api/footage?appids=${encodeURIComponent(id)}`, { cache: 'force-cache' });
+          // This response grows to include full Steam screenshots; never reuse an older browser-cached payload.
+          const response = await fetch(`/api/footage?appids=${encodeURIComponent(id)}`, { cache: 'no-store' });
           if (!response.ok) return { ok: false, urls: [], details: null };
           const payload = await response.json();
           const item = Array.isArray(payload?.items)
