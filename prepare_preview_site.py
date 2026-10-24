@@ -66,6 +66,19 @@ def find_source_root(explicit: Path | None, project_root: Path) -> Path:
     raise SystemExit(f"Found more than one desktop source ({names}); choose one with --source-root.")
 
 
+def set_base_href(html: str, href: str) -> str:
+    base_tag = f'<base href="{href}">'
+    base_pattern = re.compile(r"<base\b[^>]*>", re.IGNORECASE)
+    if base_pattern.search(html):
+        return base_pattern.sub(base_tag, html, count=1)
+
+    head_pattern = re.compile(r"(<head(?:\s[^>]*)?>)", re.IGNORECASE)
+    html, count = head_pattern.subn(lambda match: f"{match.group(1)}\n  {base_tag}", html, count=1)
+    if count != 1:
+        raise SystemExit("No <head> element found while setting the preview asset base.")
+    return html
+
+
 def copy_web_assets(source_root: Path, android_dir: Path, web_dir: Path) -> set[str]:
     files: dict[str, Path | bytes] = {}
     for path in android_dir.rglob("*"):
@@ -88,10 +101,15 @@ def copy_web_assets(source_root: Path, android_dir: Path, web_dir: Path) -> set[
         if path.is_file():
             files[name] = path
 
-    head_pattern = re.compile(r"(<head(?:\s[^>]*)?>)", re.IGNORECASE)
-    web_html, count = head_pattern.subn(r'\1\n  <script src="../preview_bridge.js"></script>', html, count=1)
-    if count != 1:
-        raise SystemExit(f"No <head> element found in {source_root / 'index.html'}")
+    web_html = set_base_href(html, "/products/web/")
+    bridge_tag = '<script src="/products/preview_bridge.js"></script>'
+    if bridge_tag not in web_html:
+        base_pattern = re.compile(r"(<base\b[^>]*>)", re.IGNORECASE)
+        web_html, count = base_pattern.subn(
+            lambda match: f"{match.group(1)}\n  {bridge_tag}", web_html, count=1
+        )
+        if count != 1:
+            raise SystemExit(f"No <base> element found in {source_root / 'index.html'}")
 
     product_links = (
         '<a class="ft-link" href="/products/android/index.html">Android preview</a>\n'
@@ -167,8 +185,9 @@ def main() -> None:
 
     android_index_path = android_dir / "index.html"
     android_html = android_index_path.read_text(encoding="utf-8")
+    android_html = set_base_href(android_html, "/products/android/")
     android_bridge_tag = '<script src="android_bridge.js"></script>'
-    preview_bridge_tag = '<script src="../preview_bridge.js"></script>'
+    preview_bridge_tag = '<script src="/products/preview_bridge.js"></script>'
     if preview_bridge_tag not in android_html:
         if android_bridge_tag not in android_html:
             raise SystemExit("Android source preview is missing the Android bridge script injection.")

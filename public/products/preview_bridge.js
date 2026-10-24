@@ -3,7 +3,7 @@
 
   const readJson = async (name, fallback) => {
     try {
-      const response = await fetch(new URL(name, window.location.href), { cache: 'no-store' });
+      const response = await fetch(new URL(name, document.baseURI || window.location.href), { cache: 'no-store' });
       if (!response.ok) return fallback;
       return await response.json();
     } catch (_) {
@@ -54,7 +54,7 @@
     },
     async get_countdown_html() {
       try {
-        const response = await fetch(new URL('./phantom_blade_zero_countdown.html', window.location.href));
+        const response = await fetch(new URL('./phantom_blade_zero_countdown.html', document.baseURI || window.location.href));
         return response.ok ? await response.text() : '';
       } catch (_) {
         return '';
