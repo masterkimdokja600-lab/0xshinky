@@ -5,6 +5,7 @@
   let translationRequest = null;
   let translationRequestVersion = 0;
   const trailerCache = new Map();
+  const trailerRequests = new Map();
 
   const readJson = async (name, fallback) => {
     try {
@@ -96,21 +97,30 @@
       const id = String(appid ?? '').trim();
       if (!/^\d+$/.test(id)) return { ok: true, urls: [] };
       if (trailerCache.has(id)) return trailerCache.get(id);
+      if (trailerRequests.has(id)) return trailerRequests.get(id);
+      const request = (async () => {
+        try {
+          const response = await fetch(`/api/footage?appids=${encodeURIComponent(id)}`, { cache: 'force-cache' });
+          if (!response.ok) return { ok: false, urls: [], details: null };
+          const payload = await response.json();
+          const item = Array.isArray(payload?.items)
+            ? payload.items.find(entry => String(entry.appid) === id)
+            : null;
+          const urls = Array.isArray(item?.urls)
+            ? item.urls.filter(url => typeof url === 'string' && /^https:\/\//i.test(url))
+            : [];
+          const result = { ok: true, urls, details: item?.details && typeof item.details === 'object' ? item.details : null };
+          trailerCache.set(id, result);
+          return result;
+        } catch (_) {
+          return { ok: false, urls: [], details: null };
+        }
+      })();
+      trailerRequests.set(id, request);
       try {
-        const response = await fetch(`/api/footage?appids=${encodeURIComponent(id)}`, { cache: 'force-cache' });
-        if (!response.ok) return { ok: false, urls: [] };
-        const payload = await response.json();
-        const item = Array.isArray(payload?.items)
-          ? payload.items.find(entry => String(entry.appid) === id)
-          : null;
-        const urls = Array.isArray(item?.urls)
-          ? item.urls.filter(url => typeof url === 'string' && /^https:\/\//i.test(url))
-          : [];
-        const result = { ok: true, urls, details: item?.details && typeof item.details === 'object' ? item.details : null };
-        trailerCache.set(id, result);
-        return result;
-      } catch (_) {
-        return { ok: false, urls: [] };
+        return await request;
+      } finally {
+        if (trailerRequests.get(id) === request) trailerRequests.delete(id);
       }
     },
     async sync_games() {

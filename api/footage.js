@@ -39,9 +39,13 @@ function storeDetails(data) {
     : [];
   const screenshots = Array.isArray(data.screenshots)
     ? data.screenshots
-      .map(image => typeof image?.path_full === 'string' ? image.path_full.trim() : '')
-      .filter(url => /^https:\/\//i.test(url))
-      .filter((url, index, all) => all.indexOf(url) === index)
+      .map(image => ({
+        fullUrl: typeof image?.path_full === 'string' ? image.path_full.trim() : '',
+        thumbnailUrl: typeof image?.path_thumbnail === 'string' ? image.path_thumbnail.trim() : ''
+      }))
+      .filter(image => /^https:\/\//i.test(image.fullUrl))
+      .map(image => ({ ...image, thumbnailUrl: /^https:\/\//i.test(image.thumbnailUrl) ? image.thumbnailUrl : image.fullUrl }))
+      .filter((image, index, all) => all.findIndex(item => item.fullUrl === image.fullUrl) === index)
       .slice(0, 8)
     : [];
 
@@ -60,6 +64,7 @@ function storeDetails(data) {
     platforms: data.platforms && typeof data.platforms === 'object'
       ? Object.fromEntries(Object.entries(data.platforms).filter(([, supported]) => supported === true))
       : {},
+    headerImage: typeof data.header_image === 'string' ? data.header_image.trim() : '',
     screenshots
   };
 }

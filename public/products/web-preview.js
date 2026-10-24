@@ -136,48 +136,33 @@
         <img class="web-game-cover" id="webGameCover" alt="" />
         <dl class="web-game-facts" id="webGameFacts"></dl>
       </div>
-      <section class="web-game-about" id="webGameAbout" hidden aria-labelledby="webGameAboutTitle">
-        <h3 id="webGameAboutTitle">Giới thiệu</h3>
-        <p id="webGameDescription"></p>
-      </section>
       <p class="web-game-info-status" id="webGameInfoStatus" role="status" hidden></p>
-      <section class="web-game-media" id="webGameMedia" aria-label="Trailer game">
-        <video id="webGameTrailer" controls playsinline preload="none"></video>
-        <p id="webGameMediaMessage" role="status">Đang tìm trailer từ Steam…</p>
-      </section>
-      <section class="web-game-gallery" id="webGameGallery" aria-labelledby="webGameGalleryTitle" hidden>
-        <h3 id="webGameGalleryTitle">Ảnh chụp màn hình</h3>
-        <div class="web-game-gallery-list" id="webGameGalleryList"></div>
-      </section>
-      <p class="web-game-guidance">Đây là trang preview trên web: bạn có thể xem thông tin và trailer. Để cài hoặc chơi game, hãy tải ứng dụng 0xshinky cho Windows.</p>
+      <p class="web-game-guidance">Đây là bản preview trên web. Muốn cài hoặc chơi game, hãy mở trang sản phẩm 0xshinky cho Windows.</p>
       <p class="web-game-release-status" id="webGameReleaseStatus" role="status">Đang kiểm tra bản phát hành Windows…</p>
       <div class="web-game-actions">
         <a id="webGameStoreLink" class="web-game-store-link" target="_blank" rel="noopener noreferrer">Xem trang game trên Steam <span aria-hidden="true">↗</span></a>
-        <a id="gmPreviewAppDownload" class="web-app-download" aria-label="Tải ứng dụng 0xshinky cho Windows" aria-disabled="true" tabindex="-1">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-          <span>Tải 0xshinky cho Windows</span>
+        <a id="gmPreviewAppDownload" class="web-app-download" href="/desktop/" aria-label="Xem sản phẩm 0xshinky cho Windows">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3h7v7"></path><path d="M10 14 21 3"></path><path d="M19 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h6"></path></svg>
+          <span>Xem 0xshinky cho Windows</span>
         </a>
       </div>
     `;
-    summary.after(content);
-    enableDesktopDownload(content.querySelector('#gmPreviewAppDownload'), content.querySelector('#webGameReleaseStatus'));
+    const mediaGallery = modal.querySelector('#gmMediaGallery');
+    const storeDescription = modal.querySelector('#gmStoreDescription');
+    (mediaGallery || storeDescription || summary).after(content);
+    const releaseStatus = content.querySelector('#webGameReleaseStatus');
+    getDesktopRelease().then(release => {
+      const published = formatDate(release.publishedAt);
+      releaseStatus.textContent = `Bản Windows mới nhất · v${release.version}${published ? ` · ${published}` : ''}`;
+    }).catch(() => {
+      releaseStatus.textContent = 'Thông tin phát hành Windows hiện không khả dụng.';
+    });
 
     let activeToken = 0;
-    const video = content.querySelector('#webGameTrailer');
-    const message = content.querySelector('#webGameMediaMessage');
-    const closeVideo = () => {
-      activeToken += 1;
-      video.pause();
-      video.removeAttribute('src');
-      video.load();
-      video.hidden = true;
-      message.hidden = false;
-      message.textContent = 'Mở một game để xem trailer.';
-    };
 
     const update = async () => {
       if (!modal.classList.contains('active')) {
-        closeVideo();
+        activeToken += 1;
         return;
       }
 
@@ -232,41 +217,11 @@
           facts.append(note);
         }
 
-        const about = content.querySelector('#webGameAbout');
-        const description = clean(details?.shortDescription);
-        about.hidden = !description;
-        content.querySelector('#webGameDescription').textContent = description;
-
-        const gallery = content.querySelector('#webGameGallery');
-        const galleryList = content.querySelector('#webGameGalleryList');
-        galleryList.replaceChildren();
-        const screenshots = Array.isArray(details?.screenshots) ? details.screenshots : [];
-        for (const [index, source] of screenshots.entries()) {
-          const url = safeHttpsUrl(source);
-          if (!url) continue;
-          const link = document.createElement('a');
-          link.href = url;
-          link.target = '_blank';
-          link.rel = 'noopener noreferrer';
-          link.setAttribute('aria-label', `Mở ảnh chụp màn hình ${index + 1} của ${title || 'game'}`);
-          const image = document.createElement('img');
-          image.src = url;
-          image.alt = `${title || 'Game'} — ảnh chụp màn hình ${index + 1}`;
-          image.loading = 'lazy';
-          image.decoding = 'async';
-          image.addEventListener('error', () => {
-            link.remove();
-            gallery.hidden = !galleryList.childElementCount;
-          }, { once: true });
-          link.append(image);
-          galleryList.append(link);
-        }
-        gallery.hidden = !galleryList.childElementCount;
       };
       renderStoreDetails(null);
       const infoStatus = content.querySelector('#webGameInfoStatus');
       infoStatus.hidden = false;
-      infoStatus.textContent = 'Đang lấy mô tả và ảnh từ trang game…';
+      infoStatus.textContent = 'Đang lấy thông tin game…';
 
       const storeLink = content.querySelector('#webGameStoreLink');
       if (/^\d+$/.test(appid)) {
@@ -277,61 +232,28 @@
         storeLink.hidden = true;
       }
 
-      video.pause();
-      video.removeAttribute('src');
-      video.hidden = true;
-      video.poster = safeHttpsUrl(currentGame?.header_url || '');
-      video.title = title ? `${title} trailer` : 'Game trailer';
-      message.hidden = false;
-      message.textContent = 'Đang tìm trailer từ Steam…';
-
       const api = window.pywebview && window.pywebview.api;
-      let urls = [];
       let trailerLookupFailed = false;
+      let details = null;
       try {
         const result = api && typeof api.get_game_trailer === 'function'
           ? await api.get_game_trailer(appid)
           : null;
         if (token !== activeToken) return;
         trailerLookupFailed = Boolean(result && result.ok === false);
-        urls = Array.isArray(result?.urls) ? result.urls.map(safeHttpsUrl).filter(Boolean) : [];
-        renderStoreDetails(result?.details || null);
+        details = result?.details || null;
+        renderStoreDetails(details);
       } catch (_) {
         trailerLookupFailed = true;
-        urls = [];
       }
       if (token !== activeToken) return;
-      const hasStoreInfo = content.querySelector('#webGameAbout')?.hidden === false
-        || content.querySelector('#webGameGallery')?.hidden === false
+      const hasStoreInfo = Boolean(details?.shortDescription)
+        || (Array.isArray(details?.screenshots) && details.screenshots.length > 0)
         || content.querySelector('#webGameFacts')?.querySelectorAll('.web-game-fact').length > 3;
       infoStatus.textContent = hasStoreInfo
         ? ''
         : (trailerLookupFailed ? 'Không thể tải thêm thông tin từ trang game lúc này.' : 'Trang game hiện chưa cung cấp thêm thông tin.');
       infoStatus.hidden = hasStoreInfo;
-      if (!urls.length) {
-        message.textContent = trailerLookupFailed
-          ? 'Không thể kết nối nguồn trailer lúc này.'
-          : 'Chưa có trailer khả dụng từ Steam cho game này.';
-        return;
-      }
-
-      let index = 0;
-      video.onerror = () => {
-        if (token !== activeToken) return;
-        index += 1;
-        if (index < urls.length) {
-          video.src = urls[index];
-          video.load();
-          return;
-        }
-        video.hidden = true;
-        message.hidden = false;
-        message.textContent = 'Không phát được trailer này. Hãy mở trang game trên Steam để xem media.';
-      };
-      video.src = urls[index];
-      video.load();
-      video.hidden = false;
-      message.hidden = true;
     };
 
     const classObserver = new MutationObserver(update);
@@ -340,10 +262,6 @@
       const node = document.getElementById(id);
       if (node) new MutationObserver(update).observe(node, { childList: true, characterData: true, subtree: true });
     }
-    modal.addEventListener('click', event => {
-      if (event.target === modal) closeVideo();
-    });
-    document.getElementById('closeGameModalX')?.addEventListener('click', closeVideo);
   };
 
   const installTranslationWebContent = () => {
