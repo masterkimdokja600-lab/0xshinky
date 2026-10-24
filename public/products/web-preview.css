@@ -1,6 +1,70 @@
 #btnFullscreen,
+#btnMinimize,
+#btnMaximize,
+#btnClose,
+#openSettingsBtn,
+#btnNotifications,
+#titlebarHelpAnchor,
+#installedToggleWrap,
+#bottomDownloadDock,
+#settingsModal,
+#singleFileModal,
+#launchOptionsModal,
+#fixRunNoticeModal,
+#gameModal .status-badge,
+#gameModal .game-options-row,
+#gameModal .game-modal-card .game-summary-row:not(:has(#gmDev)),
+#gameModal .game-modal-card .form-group:has(#gmFolderInput),
+#gameModal #gmProgressContainer,
+#gameModal #gmLogLine,
 #gmDownloadBtn,
-#gmSelectFilesBtn {
+#gmSelectFilesBtn,
+#gmPlayBtn,
+#gmLaunchOptionsBtn,
+#gmPauseDlBtn,
+#gmCancelDlBtn,
+#gmApplyFixGroup,
+#gmViethoaBtn,
+#gmUninstallFixBtn,
+#gmUninstallBtn,
+.translation-folder-section,
+#viProgress,
+#viInstallBtn,
+#viPlayBtn,
+#viUninstallBtn,
+#viReinstallBtn,
+#siteFooter [data-ft="installed"],
+#siteFooter [data-ft="settings"],
+#siteFooter [data-ft="notifications"],
+#siteFooter [data-ft="help"],
+#siteFooter [data-ft="refresh"],
+#siteFooter #ftVersion {
+  display: none !important;
+}
+
+#siteFooter .ft-col:has([data-ft="settings"]) {
+  display: none !important;
+}
+
+.titlebar-version,
+.titlebar-drag,
+.titlebar-right,
+.upd-chip,
+.titlebar-notif-anchor,
+.titlebar-help-anchor {
+  display: none !important;
+}
+
+#brandRefresh {
+  cursor: pointer;
+}
+
+#viModal .translation-folder-section,
+#viModal #viProgress,
+#viModal #viInstallBtn,
+#viModal #viPlayBtn,
+#viModal #viUninstallBtn,
+#viModal #viReinstallBtn {
   display: none !important;
 }
 
@@ -8,4 +72,92 @@
   display: inline-flex;
   cursor: pointer;
   text-decoration: none;
+}
+
+#viPreviewAppDownload {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  color: var(--text-main);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+#viPreviewAppDownload:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--card-hover);
+}
+
+.web-products-view {
+  display: none;
+  padding: 24px clamp(16px, 2vw, 28px) 48px;
+}
+
+.web-products-list {
+  max-width: 1100px;
+  margin: 0 auto;
+  border-top: 1px solid var(--border-color);
+}
+
+.web-product-row {
+  display: grid;
+  grid-template-columns: minmax(200px, 1fr) minmax(140px, .8fr) auto;
+  align-items: center;
+  gap: 20px;
+  min-height: 84px;
+  padding: 14px 4px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.web-product-row[hidden] { display: none !important; }
+
+.web-product-info {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.web-product-name {
+  width: fit-content;
+  color: var(--text-main);
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.web-product-name:hover { color: var(--accent); }
+
+.web-product-platform,
+.web-product-release {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.web-product-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 16px;
+}
+
+.web-product-actions a {
+  color: var(--text-main);
+  font-size: 12px;
+  text-decoration: none;
+}
+
+.web-product-actions a:hover { color: var(--accent); }
+
+@media (max-width: 680px) {
+  .web-products-view { padding: 16px 12px 32px; }
+  .web-product-row { grid-template-columns: 1fr auto; gap: 12px; }
+  .web-product-release { grid-column: 1; }
+  .web-product-actions { grid-column: 1 / -1; justify-content: flex-start; padding-left: 0; }
 }
