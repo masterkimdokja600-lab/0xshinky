@@ -1066,10 +1066,14 @@
     .game-store-extra-item[hidden] { display: none; }
     .game-store-category-list { display: flex; flex-wrap: wrap; gap: 7px; }
     .game-store-category { padding: 5px 9px; border: 1px solid var(--border-subtle); border-radius: 999px; color: var(--text-muted); font-size: 12px; line-height: 1.2; }
-    .game-store-extra-facts { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 0; color: var(--text-muted); font-size: 12px; line-height: 1.45; }
-    .game-store-extra-fact { display: flex; gap: 5px; }
-    .game-store-extra-fact dt { color: var(--text-muted); }
-    .game-store-extra-fact dd { margin: 0; color: var(--text-main); }
+    .game-store-extra-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; min-width: 0; margin: 0; }
+    .game-store-extra-fact { display: grid; align-content: start; gap: 7px; min-width: 0; padding: 12px 14px; border: 1px solid var(--border-subtle); border-radius: 9px; background: var(--bg-elevated); }
+    .game-store-extra-fact.is-wide { grid-column: 1 / -1; }
+    .game-store-extra-fact dt { color: var(--text-muted); font-size: 11px; font-weight: 650; letter-spacing: .045em; text-transform: uppercase; }
+    .game-store-extra-fact dd { min-width: 0; margin: 0; color: var(--text-main); font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+    .game-store-extra-fact dd p { margin: 0 0 6px; }
+    .game-store-extra-fact dd br { display: block; content: ''; margin-top: 5px; }
+    .game-store-extra-fact dd > :last-child { margin-bottom: 0; }
     .game-store-stats { margin: 0; color: var(--text-muted); font-size: 12px; line-height: 1.45; }
     .game-store-stats a { color: inherit; }
     .game-store-accordion { overflow: hidden; border: 1px solid var(--border-subtle); border-radius: 8px; background: var(--bg-elevated); }
@@ -1101,6 +1105,10 @@
     .game-media-surface img[hidden] { display: none; }
     .game-media-empty { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; padding: 20px; color: var(--text-muted); font-size: 13px; text-align: center; }
     .game-media-empty[hidden] { display: none; }
+    @media (max-width: 560px) {
+      .game-store-extra-facts { grid-template-columns: minmax(0, 1fr); }
+      .game-store-extra-fact.is-wide { grid-column: auto; }
+    }
     .game-media-arrow { position: absolute; top: 50%; z-index: 2; display: grid; place-items: center; width: 40px; height: 48px; padding: 0; border: 1px solid rgb(255 255 255 / .16); border-radius: 8px; background: rgb(13 13 16 / .72); color: #fff; cursor: pointer; opacity: .82; transform: translateY(-50%); transition: background .15s ease, opacity .15s ease, transform .18s cubic-bezier(.16, 1, .3, 1); }
     .game-media-arrow:hover { background: rgb(13 13 16 / .92); opacity: 1; }
     .game-media-arrow:active { transform: translateY(-50%) scale(.96); }
@@ -7290,13 +7298,66 @@
     try { savedHalloween = localStorage.getItem('0xshinky-halloween') === 'true'; } catch (e) {}
     applyHalloween(savedHalloween, false, 3);
 
+    const steamImageCdnHosts = [
+      'shared.cloudflare.steamstatic.com',
+      'shared.fastly.steamstatic.com',
+      'shared.akamai.steamstatic.com'
+    ];
+
+    function gameImageCandidates(value) {
+      const safeUrl = safeGameMediaUrl(value);
+      if (!safeUrl) return [];
+      try {
+        const original = new URL(safeUrl);
+        if (!steamImageCdnHosts.includes(original.hostname)) return [original.href];
+        return [original.hostname, ...steamImageCdnHosts.filter(host => host !== original.hostname)]
+          .map(host => {
+            const candidate = new URL(original.href);
+            candidate.hostname = host;
+            return candidate.href;
+          });
+      } catch (_) {
+        return [];
+      }
+    }
+
+    function setGameImageSources(image, values) {
+      if (!image) return;
+      const candidates = [...new Set((Array.isArray(values) ? values : [values]).flatMap(gameImageCandidates))];
+      image.dataset.imageCandidates = JSON.stringify(candidates);
+      image.dataset.imageCandidateIndex = '0';
+      if (candidates.length) image.src = candidates[0];
+      else image.removeAttribute('src');
+    }
+
+    function advanceGameImageSource(image) {
+      if (!image) return false;
+      try {
+        const candidates = JSON.parse(image.dataset.imageCandidates || '[]');
+        const nextIndex = Number(image.dataset.imageCandidateIndex || 0) + 1;
+        if (!Array.isArray(candidates) || nextIndex >= candidates.length) return false;
+        image.dataset.imageCandidateIndex = String(nextIndex);
+        image.src = candidates[nextIndex];
+        return true;
+      } catch (_) {
+        return false;
+      }
+    }
+
+    window.__0xshinkySetSteamImage = setGameImageSources;
+    window.__0xshinkyAdvanceSteamImage = advanceGameImageSource;
+
     // ─── High Performance Lazy Loading ───
     const imgObserver = new IntersectionObserver((entries, observer) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
           const img = entry.target;
-          if (img.dataset.src && !img.src) {
-            img.src = img.dataset.src;
+          if (img.dataset.src && !img.hasAttribute('src')) {
+            const posterSrc = img.dataset.src;
+            const headerSrc = img.dataset.headerSrc || '';
+            delete img.dataset.src;
+            delete img.dataset.headerSrc;
+            setGameImageSources(img, [posterSrc, headerSrc]);
           }
           observer.unobserve(img);
         }
@@ -7419,6 +7480,8 @@
         if (img.complete) return;
         img.onload = img.onerror = null;
         img.removeAttribute('src');
+        delete img.dataset.imageCandidates;
+        delete img.dataset.imageCandidateIndex;
       });
     }
 
@@ -7569,6 +7632,7 @@
 
         const img = card.querySelector('.game-poster');
         const fallback = card.querySelector('.game-card-fallback');
+        img.dataset.headerSrc = headerSrc;
 
         const warmSrc = loadedPosters.get(posterSrc);
         // Poster chưa về thì thẻ hiện lớp "kính xám" chạy sáng (skeleton) → hết cảm giác thẻ trống rồi bỗng bật ảnh
@@ -7589,21 +7653,19 @@
           endPosterLoading();
         };
         img.onerror = () => {
-          if (!img.dataset.triedHeader) {
-            img.dataset.triedHeader = 'true';
-            img.src = headerSrc;
-          } else {
-            img.style.display = 'none';
-            fallback.style.display = 'flex';
-            endPosterLoading();
-          }
+          if (advanceGameImageSource(img)) return;
+          img.onerror = null;
+          img.style.display = 'none';
+          fallback.style.display = 'flex';
+          endPosterLoading();
         };
 
         if (warmSrc) {
           img.classList.add('loaded');   // đã có trong cache: hiện luôn, không fade lại
-          img.src = warmSrc;
+          setGameImageSources(img, [warmSrc, headerSrc]);
         } else if (index < 8) {
-          img.src = posterSrc;
+          delete img.dataset.headerSrc;
+          setGameImageSources(img, [posterSrc, headerSrc]);
         } else {
           imgObserver.observe(img);
         }
@@ -8350,7 +8412,8 @@
     function loadGameMediaThumbnail(image) {
       const source = image?.dataset.src;
       if (!source) return;
-      image.src = source;
+      image.onerror = () => { advanceGameImageSource(image); };
+      setGameImageSources(image, [source]);
       delete image.dataset.src;
       if (gameMediaThumbnailObserver) gameMediaThumbnailObserver.unobserve(image);
     }
@@ -8408,11 +8471,14 @@
         if (tag === 'IMG') {
           const src = safeStoreExternalUrl(node.getAttribute('src'));
           if (!src) return null;
-          safeNode.src = src;
           safeNode.alt = (node.getAttribute('alt') || '').slice(0, 500);
           safeNode.loading = 'lazy';
           safeNode.decoding = 'async';
           safeNode.referrerPolicy = 'no-referrer';
+          safeNode.onerror = () => {
+            if (!advanceGameImageSource(safeNode)) safeNode.remove();
+          };
+          setGameImageSources(safeNode, [src]);
           return safeNode;
         }
         if (tag === 'A') {
@@ -8438,15 +8504,22 @@
       return (template.content.textContent || '').replace(/\s+/g, ' ').trim();
     }
 
-    function appendStoreFact(label, value) {
+    function bestStoreDescription(details) {
+      return [details?.detailedDescription, details?.aboutTheGame]
+        .filter(value => typeof value === 'string' && value.trim())
+        .sort((left, right) => storeMarkupText(right).length - storeMarkupText(left).length)[0] || '';
+    }
+
+    function appendStoreFact(label, value, options = {}) {
       const text = typeof value === 'string' ? value.trim() : '';
       if (!text || !gmStoreExtraFacts) return;
       const row = document.createElement('div');
-      row.className = 'game-store-extra-fact';
+      row.className = `game-store-extra-fact${options.wide ? ' is-wide' : ''}`;
       const term = document.createElement('dt');
       term.textContent = label;
       const detail = document.createElement('dd');
-      detail.textContent = text;
+      if (options.markup) detail.append(sanitizeStoreMarkup(text));
+      else detail.textContent = text;
       row.append(term, detail);
       gmStoreExtraFacts.append(row);
     }
@@ -8485,10 +8558,9 @@
       }
       if (gmStoreExtraFacts) {
         gmStoreExtraFacts.replaceChildren();
-        const languages = storeMarkupText(value?.supportedLanguages);
-        appendStoreFact('Ngôn ngữ hỗ trợ', languages);
+        appendStoreFact('Ngôn ngữ hỗ trợ', value?.supportedLanguages, { wide: true, markup: true });
         appendStoreFact('Hỗ trợ tay cầm', value?.controllerSupport);
-        appendStoreFact('Ghi chú nội dung', value?.contentNotes);
+        appendStoreFact('Ghi chú nội dung', value?.contentNotes, { wide: true });
         appendStoreLinkFact('Trang web', value?.website);
       }
 
@@ -8514,7 +8586,7 @@
         gmStoreStats.hidden = stats.length === 0;
       }
 
-      const about = value?.aboutTheGame || value?.detailedDescription || '';
+      const about = bestStoreDescription(value);
       if (gmStoreAboutDetails) {
         gmStoreAboutDetails.hidden = !about.trim();
         gmStoreAboutDetails.open = false;
@@ -8555,7 +8627,7 @@
 
     function renderGameStoreAbout() {
       if (!gmStoreAboutBody || gmStoreAboutBody.dataset.loaded === 'true') return;
-      const markup = currentStoreDetails?.aboutTheGame || currentStoreDetails?.detailedDescription || '';
+      const markup = bestStoreDescription(currentStoreDetails);
       gmStoreAboutBody.replaceChildren(sanitizeStoreMarkup(markup));
       gmStoreAboutBody.dataset.loaded = 'true';
     }
@@ -8616,6 +8688,8 @@
       if (gmMediaImage) {
         gmMediaImage.onerror = null;
         gmMediaImage.removeAttribute('src');
+        delete gmMediaImage.dataset.imageCandidates;
+        delete gmMediaImage.dataset.imageCandidateIndex;
         gmMediaImage.hidden = true;
       }
       if (gmMediaThumbnails) gmMediaThumbnails.querySelectorAll('img').forEach(image => {
@@ -8700,13 +8774,15 @@
             gmMediaImage.alt = item.title;
             gmMediaImage.onerror = () => {
               if (token !== gameMediaTransitionToken) return;
+              if (advanceGameImageSource(gmMediaImage)) return;
+              gmMediaImage.onerror = null;
               gmMediaImage.hidden = true;
               if (gmMediaEmpty) {
                 gmMediaEmpty.textContent = 'Không tải được ảnh này. Hãy chuyển sang media khác.';
                 gmMediaEmpty.hidden = false;
               }
             };
-            gmMediaImage.src = item.fullUrl;
+            setGameImageSources(gmMediaImage, [item.fullUrl]);
             gmMediaImage.hidden = false;
           }
         }
@@ -8906,11 +8982,10 @@
       
       const posterSrc = (initialData && initialData.poster_url) || game.poster_url || `https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${game.appid}/library_600x900.jpg`;
       const headerSrc = (initialData && initialData.header_url) || game.header_url || `https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${game.appid}/header.jpg`;
-      gmPoster.src = posterSrc;
       gmPoster.onerror = () => {
-        gmPoster.onerror = null;
-        gmPoster.src = headerSrc;
+        if (!advanceGameImageSource(gmPoster)) gmPoster.onerror = null;
       };
+      setGameImageSources(gmPoster, [posterSrc, headerSrc]);
 
       // Populate Platform dropdown
       // Entries are plain strings, or {id, label, edition} objects when the game declares editions

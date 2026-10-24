@@ -180,7 +180,14 @@
       const cover = content.querySelector('#webGameCover');
       const poster = safeHttpsUrl(currentGame?.poster_url || document.getElementById('gmPoster')?.getAttribute('src'));
       if (poster) {
-        cover.src = poster;
+        cover.onerror = () => {
+          if (typeof window.__0xshinkyAdvanceSteamImage === 'function' && window.__0xshinkyAdvanceSteamImage(cover)) return;
+          cover.onerror = null;
+          cover.removeAttribute('src');
+          cover.hidden = true;
+        };
+        if (typeof window.__0xshinkySetSteamImage === 'function') window.__0xshinkySetSteamImage(cover, [poster]);
+        else cover.src = poster;
         cover.alt = title ? `${title} cover` : '';
         cover.hidden = false;
       } else {
@@ -230,7 +237,7 @@
 
       const storeLink = content.querySelector('#webGameStoreLink');
       if (/^\d+$/.test(appid)) {
-        storeLink.href = `https://store.steampowered.com/app/${encodeURIComponent(appid)}/`;
+        storeLink.href = `https://store.steampowered.com/app/${encodeURIComponent(appid)}/?cc=us&l=en`;
         storeLink.hidden = false;
       } else {
         storeLink.removeAttribute('href');
