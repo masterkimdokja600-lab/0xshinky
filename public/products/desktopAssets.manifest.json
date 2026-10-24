@@ -57,7 +57,6 @@
   "assets/translations/jJXFr2KHruvTcgL24E8hMb.webp",
   "assets/translations/others.png",
   "assets/translations/theredteam.png",
-  "catalog.json",
   "data_sources.json",
   "default_settings.json",
   "discord_icon.png",
@@ -81,6 +80,5 @@
   "modules/tooltip.css",
   "modules/tooltip.js",
   "pbz-runtime-screen.png",
-  "phantom_blade_zero_countdown.html",
-  "translations.json"
+  "phantom_blade_zero_countdown.html"
 ]

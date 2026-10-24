@@ -30,7 +30,11 @@
       });
     },
     async get_all_translations() {
-      return await readJson('./translations.json', []);
+      const response = await fetch('/api/translations', { cache: 'no-store' });
+      if (!response.ok) throw new Error(`Translation catalog request failed (${response.status})`);
+      const translations = await response.json();
+      if (!Array.isArray(translations)) throw new Error('Translation catalog response is not a list');
+      return translations;
     },
     async get_settings() {
       const defaults = await readJson('./default_settings.json', {});

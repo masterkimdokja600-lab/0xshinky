@@ -4,6 +4,7 @@ const path = require('node:path');
 const { URL } = require('node:url');
 const gameTrailer = require('./api/footage');
 const gameCatalog = require('./api/catalog');
+const translationCatalog = require('./api/translations');
 
 const root = path.resolve(__dirname, 'public');
 const port = Number(process.env['0XSHINKY_PREVIEW_PORT'] || 4173);
@@ -70,6 +71,23 @@ async function handleCatalog(req, res) {
   await gameCatalog(req, adapter);
 }
 
+async function handleTranslations(req, res) {
+  const adapter = {
+    setHeader(name, value) {
+      res.setHeader(name, value);
+    },
+    status(statusCode) {
+      return {
+        json(value) {
+          sendJson(res, statusCode, value);
+          return res;
+        }
+      };
+    }
+  };
+  await translationCatalog(req, adapter);
+}
+
 async function handleStatic(req, res, url) {
   let pathname;
   try {
@@ -110,6 +128,10 @@ http.createServer(async (req, res) => {
     }
     if (url.pathname === '/api/catalog') {
       await handleCatalog(req, res);
+      return;
+    }
+    if (url.pathname === '/api/translations') {
+      await handleTranslations(req, res);
       return;
     }
     if (req.method !== 'GET' && req.method !== 'HEAD') {

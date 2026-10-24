@@ -1,7 +1,5 @@
 const CATALOG_HOSTS = new Set(['raw.githubusercontent.com', 'cdn.jsdelivr.net']);
 const CATALOG_TIMEOUT_MS = 8000;
-const NEW_WINDOW_DAYS = 7;
-const NEW_MAX_COUNT = 1;
 
 function requestOrigin(req) {
   const host = String(req.headers['x-forwarded-host'] || req.headers.host || '')
@@ -65,14 +63,14 @@ async function fetchRepositoryCatalog(mirrors) {
   return null;
 }
 
-function applyNewFlags(games) {
+function applyNewFlags(games, windowDays, maxCount) {
   const now = Date.now() / 1000;
-  const windowSeconds = NEW_WINDOW_DAYS * 86400;
-  const recentStamps = games
+  const windowSeconds = windowDays * 86400;
+  let recentStamps = games
     .map(game => Number.parseInt(game.added_ts || 0, 10))
     .filter(timestamp => timestamp && timestamp >= now - windowSeconds && timestamp <= now + 86400)
-    .sort((left, right) => right - left)
-    .slice(0, NEW_MAX_COUNT);
+    .sort((left, right) => right - left);
+  if (maxCount > 0) recentStamps = recentStamps.slice(0, maxCount);
   const cutoff = recentStamps.length ? recentStamps[recentStamps.length - 1] : null;
 
   for (const game of games) {
@@ -96,6 +94,11 @@ async function loadGames(req) {
   const dataSources = await sourcesResponse.json();
   const repositories = repositoryMirrors(dataSources);
   if (!repositories.length) throw new Error('No valid desktop game catalog sources were generated');
+  const newWindowDays = Number(dataSources.newWindowDays);
+  const newMaxCount = Number(dataSources.newMaxCount);
+  if (!Number.isInteger(newWindowDays) || newWindowDays < 0 || !Number.isInteger(newMaxCount) || newMaxCount < 0) {
+    throw new Error('Desktop game catalog rules were not generated');
+  }
 
   const catalogs = await Promise.all(repositories.map(fetchRepositoryCatalog));
   const gamesById = new Map();
@@ -118,11 +121,13 @@ async function loadGames(req) {
   if (!catalogs.some(Array.isArray)) throw new Error('All desktop game catalog sources are unavailable');
 
   const games = Array.from(gamesById.values());
-  applyNewFlags(games);
+  applyNewFlags(games, newWindowDays, newMaxCount);
   games.sort((left, right) => {
     const newOrder = Number(Boolean(right.is_new)) - Number(Boolean(left.is_new));
     if (newOrder) return newOrder;
-    return String(left.name || '').toLowerCase().localeCompare(String(right.name || '').toLowerCase());
+    const leftName = String(left.name || '').toLowerCase();
+    const rightName = String(right.name || '').toLowerCase();
+    return leftName < rightName ? -1 : leftName > rightName ? 1 : 0;
   });
   return games;
 }
