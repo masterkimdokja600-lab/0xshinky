@@ -8408,6 +8408,8 @@
     let gameMediaTransitionToken = 0;
     let gameMediaTransitionTimer = 0;
     let gameMediaPointerStart = null;
+    let gameMediaHlsInstance = null;
+    let gameMediaHlsScriptPromise = null;
 
     function loadGameMediaThumbnail(image) {
       const source = image?.dataset.src;
@@ -8670,11 +8672,97 @@
 
     function stopGameMediaVideo() {
       if (!gmMediaVideo) return;
+      if (gameMediaHlsInstance) {
+        gameMediaHlsInstance.destroy();
+        gameMediaHlsInstance = null;
+      }
       gmMediaVideo.pause();
       gmMediaVideo.onerror = null;
       gmMediaVideo.removeAttribute('src');
       gmMediaVideo.load();
       gmMediaVideo.hidden = true;
+    }
+
+    function loadGameMediaHls() {
+      if (window.Hls) return Promise.resolve(window.Hls);
+      if (gameMediaHlsScriptPromise) return gameMediaHlsScriptPromise;
+      gameMediaHlsScriptPromise = new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = new URL('modules/hls.min.js', document.baseURI || window.location.href).href;
+        script.async = true;
+        script.onload = () => window.Hls
+          ? resolve(window.Hls)
+          : reject(new Error('Hls.js did not initialize'));
+        script.onerror = () => reject(new Error('Hls.js could not be loaded'));
+        document.head.append(script);
+      }).catch(error => {
+        gameMediaHlsScriptPromise = null;
+        throw error;
+      });
+      return gameMediaHlsScriptPromise;
+    }
+
+    function showGameMediaVideoError(token) {
+      if (token !== gameMediaTransitionToken) return;
+      if (gameMediaHlsInstance) {
+        gameMediaHlsInstance.destroy();
+        gameMediaHlsInstance = null;
+      }
+      gmMediaVideo.onerror = null;
+      gmMediaVideo.pause();
+      gmMediaVideo.removeAttribute('src');
+      gmMediaVideo.load();
+      gmMediaVideo.hidden = true;
+      if (gmMediaEmpty) {
+        gmMediaEmpty.textContent = 'Không phát được trailer từ Steam. Hãy thử lại hoặc chuyển sang media khác.';
+        gmMediaEmpty.hidden = false;
+      }
+    }
+
+    async function playGameMediaVideo(item, token) {
+      if (!gmMediaVideo) return;
+      gmMediaVideo.muted = false;
+      gmMediaVideo.preload = 'none';
+      gmMediaVideo.onerror = () => showGameMediaVideoError(token);
+
+      const hlsUrl = safeGameMediaUrl(item.hlsUrl);
+      if (hlsUrl) {
+        if (gmMediaVideo.canPlayType('application/vnd.apple.mpegurl')) {
+          gmMediaVideo.src = hlsUrl;
+          gmMediaVideo.load();
+          return;
+        }
+        try {
+          const Hls = await loadGameMediaHls();
+          if (token !== gameMediaTransitionToken) return;
+          if (!Hls.isSupported()) throw new Error('HLS is not supported by this browser');
+          const hls = new Hls({
+            maxBufferLength: 12,
+            maxMaxBufferLength: 24,
+            startFragPrefetch: false,
+            backBufferLength: 15
+          });
+          gameMediaHlsInstance = hls;
+          hls.on(Hls.Events.ERROR, (_event, data) => {
+            if (data?.fatal) showGameMediaVideoError(token);
+          });
+          hls.on(Hls.Events.MEDIA_ATTACHED, () => {
+            if (token === gameMediaTransitionToken) hls.loadSource(hlsUrl);
+          });
+          hls.attachMedia(gmMediaVideo);
+        } catch (_) {
+          showGameMediaVideoError(token);
+        }
+        return;
+      }
+
+      const directUrl = Array.isArray(item.urls) ? item.urls.map(safeGameMediaUrl).find(Boolean) : '';
+      if (!directUrl) {
+        showGameMediaVideoError(token);
+        return;
+      }
+      gmMediaVideo.src = directUrl;
+      gmMediaVideo.load();
     }
 
     function resetGameModalMedia() {
@@ -8747,26 +8835,7 @@
           if (gmMediaVideo) {
             gmMediaVideo.title = item.title || (currentGameObj ? `${currentGameObj.name} trailer` : 'Game trailer');
             gmMediaVideo.hidden = false;
-            let fallbackIndex = 0;
-            const tryVideoUrl = () => {
-              if (token !== gameMediaTransitionToken) return;
-              if (fallbackIndex >= item.urls.length) {
-                gmMediaVideo.hidden = true;
-                gmMediaVideo.onerror = null;
-                if (gmMediaEmpty) {
-                  gmMediaEmpty.textContent = 'Không phát được trailer này. Hãy chuyển sang media khác.';
-                  gmMediaEmpty.hidden = false;
-                }
-                return;
-              }
-              gmMediaVideo.onerror = () => {
-                fallbackIndex += 1;
-                tryVideoUrl();
-              };
-              gmMediaVideo.src = item.urls[fallbackIndex];
-              gmMediaVideo.load();
-            };
-            tryVideoUrl();
+            void playGameMediaVideo(item, token);
           }
         } else {
           if (gmMediaLabel) gmMediaLabel.textContent = 'Ảnh chụp màn hình';
@@ -8865,9 +8934,11 @@
       const videos = Array.isArray(details?.videos) ? details.videos : [];
       for (const video of videos) {
         const videoUrls = Array.isArray(video?.urls) ? video.urls.map(safeGameMediaUrl).filter(Boolean) : [];
-        if (!videoUrls.length) continue;
+        const hlsUrl = safeGameMediaUrl(video?.hlsUrl);
+        if (!hlsUrl && !videoUrls.length) continue;
         gameMediaItems.push({
           type: 'video',
+          hlsUrl,
           urls: videoUrls,
           thumbnailUrl: safeGameMediaUrl(video.thumbnailUrl) || headerImage,
           title: typeof video.title === 'string' && video.title.trim() ? video.title.trim() : 'Trailer'

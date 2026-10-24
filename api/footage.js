@@ -14,25 +14,18 @@ function trailerItems(movies) {
     };
     for (const quality of ['max', '480']) add(movie.mp4?.[quality]);
     for (const quality of ['max', '480']) add(movie.webm?.[quality]);
-    const stream = movie.hls_h264 || movie.dash_h264;
-    if (typeof stream === 'string' && stream.includes('/')) {
-      const [clean, query] = stream.split('?', 2);
-      const micro = `${clean.slice(0, clean.lastIndexOf('/') + 1)}microtrailer.mp4${query ? `?${query}` : ''}`;
-      add(micro);
-      if (micro.includes('video.akamai.steamstatic.com')) {
-        add(micro.replace('video.akamai.steamstatic.com', 'video.fastly.steamstatic.com'));
-      } else if (micro.includes('video.fastly.steamstatic.com')) {
-        add(micro.replace('video.fastly.steamstatic.com', 'video.akamai.steamstatic.com'));
-      }
-    }
+    const hlsUrl = typeof movie.hls_h264 === 'string' && /^https?:\/\//i.test(movie.hls_h264)
+      ? movie.hls_h264.replace(/^http:\/\//i, 'https://')
+      : '';
     return {
       title: typeof movie.name === 'string' && movie.name.trim() ? movie.name.trim() : 'Trailer',
       thumbnailUrl: typeof movie.thumbnail === 'string' && /^https?:\/\//i.test(movie.thumbnail.trim())
         ? movie.thumbnail.trim().replace(/^http:\/\//i, 'https://')
         : '',
+      hlsUrl,
       urls
     };
-  }).filter(movie => movie.urls.length > 0);
+  }).filter(movie => movie.hlsUrl || movie.urls.length > 0);
 }
 
 function trailerUrls(movies) {
