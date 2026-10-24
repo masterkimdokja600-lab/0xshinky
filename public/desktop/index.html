@@ -10,22 +10,22 @@
   </head>
   <body>
     <header class="site-header">
-      <a class="wordmark" href="/" aria-label="0xshinky, trang chủ">0xshinky</a>
+      <a class="wordmark" href="/products/web/index.html?view=products" aria-label="0xshinky, trang sản phẩm">0xshinky</a>
     </header>
 
     <main class="site-main product-main" data-release-api="/api/desktop-update" data-catalog-api="/api/catalog">
       <nav class="breadcrumbs" aria-label="Điều hướng">
-        <a href="/">Sản phẩm</a><span aria-hidden="true">/</span><span>Windows</span>
+        <a href="/products/web/index.html?view=products">Sản phẩm</a><span aria-hidden="true">/</span><span>Windows</span>
       </nav>
       <p class="eyebrow">WINDOWS</p>
       <h1>0xshinky</h1>
       <p class="intro">Thư viện game và Việt hóa trên Windows. Mở bản preview để xem giao diện và trailer game trực tiếp; tải ứng dụng PC để cài đặt hoặc chơi game.</p>
 
       <div class="product-actions">
-        <a class="action-link action-link-primary" data-release-download href="/api/desktop-update?download=1">Tải ứng dụng Windows</a>
+        <a class="action-link action-link-primary" data-release-download data-download-label="Tải ứng dụng Windows" aria-disabled="true" tabindex="-1">Đang kiểm tra bản phát hành…</a>
         <a class="action-link" href="/products/web/index.html">Mở bản preview</a>
       </div>
-      <p class="release-line"><span data-release-version>Đang lấy phiên bản mới nhất…</span><span aria-hidden="true"> · </span><span data-release-status>Đang kết nối nguồn phát hành</span></p>
+      <p class="release-line" role="status" aria-live="polite"><span data-release-version>Đang lấy phiên bản mới nhất…</span><span aria-hidden="true"> · </span><span data-release-status>Đang kết nối nguồn phát hành</span></p>
 
       <dl class="product-details">
         <div><dt class="detail-label">Nền tảng</dt><dd class="detail-value">Windows</dd></div>
@@ -42,7 +42,7 @@
 
       <nav class="product-switch" aria-label="Sản phẩm khác">
         <a href="/android/">0xshinky Android ↗</a>
-        <a href="/">Tất cả sản phẩm</a>
+        <a href="/products/web/index.html?view=products">Tất cả sản phẩm</a>
       </nav>
     </main>
 

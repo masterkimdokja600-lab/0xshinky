@@ -10,22 +10,22 @@
   </head>
   <body>
     <header class="site-header">
-      <a class="wordmark" href="/" aria-label="0xshinky, trang chủ">0xshinky</a>
+      <a class="wordmark" href="/products/web/index.html?view=products" aria-label="0xshinky, trang sản phẩm">0xshinky</a>
     </header>
 
     <main class="site-main product-main" data-release-api="/api/android-update">
       <nav class="breadcrumbs" aria-label="Điều hướng">
-        <a href="/">Sản phẩm</a><span aria-hidden="true">/</span><span>Android</span>
+        <a href="/products/web/index.html?view=products">Sản phẩm</a><span aria-hidden="true">/</span><span>Android</span>
       </nav>
       <p class="eyebrow">ANDROID</p>
       <h1>0xshinky Android</h1>
       <p class="intro">Bản Android của 0xshinky. Trang preview chạy trên web để xem giao diện; cài ứng dụng Android bằng APK mới nhất.</p>
 
       <div class="product-actions">
-        <a class="action-link action-link-primary" data-release-download href="/api/android-update?download=1">Tải ứng dụng Android</a>
+        <a class="action-link action-link-primary" data-release-download data-download-label="Tải ứng dụng Android" aria-disabled="true" tabindex="-1">Đang kiểm tra bản phát hành…</a>
         <a class="action-link" href="/products/android/index.html">Mở bản preview</a>
       </div>
-      <p class="release-line"><span data-release-version>Đang lấy phiên bản mới nhất…</span><span aria-hidden="true"> · </span><span data-release-status>Đang kết nối nguồn phát hành</span></p>
+      <p class="release-line" role="status" aria-live="polite"><span data-release-version>Đang lấy phiên bản mới nhất…</span><span aria-hidden="true"> · </span><span data-release-status>Đang kết nối nguồn phát hành</span></p>
 
       <dl class="product-details">
         <div><dt class="detail-label">Nền tảng</dt><dd class="detail-value">Android</dd></div>
@@ -41,7 +41,7 @@
 
       <nav class="product-switch" aria-label="Sản phẩm khác">
         <a href="/desktop/">0xshinky Windows ↗</a>
-        <a href="/">Tất cả sản phẩm</a>
+        <a href="/products/web/index.html?view=products">Tất cả sản phẩm</a>
       </nav>
     </main>
 

@@ -5185,7 +5185,7 @@
             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
           </svg>
           <input type="text" id="searchInput" class="search-input" placeholder="Search..." autocomplete="off" />
-          <button id="searchClear" class="search-clear">✕</button>
+          <button id="searchClear" class="search-clear" type="button" aria-label="Xóa nội dung tìm kiếm" title="Xóa tìm kiếm">✕</button>
         </div>
       </div>
     </div>
@@ -5293,7 +5293,7 @@
 
         <div class="translation-toolbar-right">
           <span class="translation-summary-count" id="transSummaryCount">Hiển thị 0 bản dịch</span>
-          <button type="button" class="btn-secondary-action" id="transRefreshBtn" title="Làm mới & đồng bộ bản dịch mới nhất từ Revolt" style="height: 34px; padding: 0 10px; border-radius: 8px;">
+          <button type="button" class="btn-secondary-action" id="transRefreshBtn" title="Làm mới danh sách Việt hóa từ nguồn hiện tại" aria-label="Làm mới danh sách Việt hóa" style="height: 34px; padding: 0 10px; border-radius: 8px;">
             <svg id="transRefreshIcon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
               <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
             </svg>
@@ -5621,7 +5621,7 @@
 
   <!-- ─── 4. GAME MANAGER MODAL ─── -->
   <div id="gameModal" class="modal-backdrop">
-    <div class="modal-card game-modal-card">
+    <div class="modal-card game-modal-card" role="dialog" aria-modal="true" aria-labelledby="gmTitle">
       <div class="modal-header">
         <div class="game-modal-head-left">
           <div class="game-title-marquee-box" id="gmTitleBox">
@@ -5630,7 +5630,7 @@
         </div>
         <div class="game-modal-head-right">
           <span id="gmBadge" class="status-badge not-installed">Not Installed</span>
-          <button id="closeGameModalX" class="close-icon-btn" aria-label="Close">
+          <button id="closeGameModalX" class="close-icon-btn" aria-label="Đóng">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -6079,6 +6079,7 @@
       // Game mới ra mắt (is_new === true) luôn đưa lên đầu danh sách!
       list.sort((a, b) => (b.is_new ? 1 : 0) - (a.is_new ? 1 : 0));
       window.games = games = list;
+      updateGamesCount(list.length, list.length);
       if (window.updateFooterFeatured) window.updateFooterFeatured();
       if (window.updateMarquee) window.updateMarquee();
     }
@@ -6175,6 +6176,7 @@
           try {
             const list = await api.get_games();
             if (list && Array.isArray(list)) {
+              window.__0XSHINKY_PREVIEW_CATALOG_ERROR__ = false;
               catalogLoaded = true;
               sortAndSetGames(list);
               applySearchFilter();
@@ -6186,6 +6188,7 @@
               return;
             }
           } catch (err) {
+            window.__0XSHINKY_PREVIEW_CATALOG_ERROR__ = true;
             console.error("Lỗi khi tải danh mục game:", err);
           }
         } else if (window.pywebview && attempt < 8) {
@@ -7510,9 +7513,11 @@
               <circle cx="11" cy="11" r="8"></circle>
               <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
             </svg>
-            <p>No games found</p>
+            <p>${window.__0XSHINKY_PREVIEW_CATALOG_ERROR__ ? 'Không thể tải danh mục game từ nguồn hiện tại.' : 'No games found'}</p>
+            ${window.__0XSHINKY_PREVIEW_CATALOG_ERROR__ ? '<button id="webCatalogRetry" type="button" class="web-catalog-retry">Thử tải lại</button>' : ''}
           </div>
         `;
+        gameGrid.querySelector('#webCatalogRetry')?.addEventListener('click', () => window.location.reload());
         gameGrid.style.minHeight = '';
         renderGamesPagination(0);
         if (typeof catalogLoaded !== 'undefined' && catalogLoaded) finishInitialLoad();
@@ -7531,8 +7536,19 @@
         card.tabIndex = 0;
         card.setAttribute('data-id', g.id);
 
-        const posterSrc = g.poster_url || `https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${g.appid}/library_600x900.jpg`;
-        const headerSrc = g.header_url || `https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${g.appid}/header.jpg`;
+        const safeImageUrl = (value, fallback) => {
+          for (const candidate of [value, fallback]) {
+            try {
+              const parsed = new URL(String(candidate || ''), window.location.origin);
+              if (parsed.protocol === 'https:' || parsed.origin === window.location.origin) return parsed.href;
+            } catch (_) {}
+          }
+          return '';
+        };
+        const safeName = escapeHtml(g.name || '');
+        const safeDeveloper = escapeHtml(g.developer || '');
+        const posterSrc = safeImageUrl(g.poster_url, `https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${g.appid}/library_600x900.jpg`);
+        const headerSrc = safeImageUrl(g.header_url, `https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${g.appid}/header.jpg`);
         
         const newBadgeHtml = g.is_new ? `
           <div class="card-badge-new" title="New Release">
@@ -7554,7 +7570,7 @@
         ` : '';
 
         const quickPlayHtml = g.is_installed ? `
-          <button class="card-quick-play-btn" title="Chơi ngay (${g.name})" aria-label="Play ${g.name}">
+          <button class="card-quick-play-btn" title="Chơi ngay (${safeName})" aria-label="Play ${safeName}">
             <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round">
               <path d="M8 5.14v14l11-7-11-7z"/>
             </svg>
@@ -7563,14 +7579,14 @@
 
         const appidStr = String(g.appid);
         card.setAttribute('data-appid', appidStr);
-        const crackSt = window.crackStatus[appidStr] || 'cracked';
+        const crackSt = window.crackStatus[appidStr] === 'uncracked' ? 'uncracked' : 'cracked';
         const crackLabel = crackSt === 'uncracked' ? 'Uncracked' : 'Cracked';
         const crackBadgeHtml = `<div class="crack-badge ${crackSt}${g.is_new ? ' below-new' : ''}"><span class="crack-badge-dot"></span><span class="crack-badge-label">${crackLabel}</span></div>`;
 
         card.innerHTML = `
-          <img class="game-poster" data-src="${posterSrc}" alt="${g.name}" decoding="async" />
+          <img class="game-poster" data-src="${escapeHtml(posterSrc)}" alt="${safeName}" decoding="async" />
           <div class="game-card-fallback" style="display: none;">
-            <span style="font-size: 13px; font-weight: 600; color: #fff;">${g.name}</span>
+            <span style="font-size: 13px; font-weight: 600; color: #fff;">${safeName}</span>
           </div>
           ${newBadgeHtml}
           ${installedBadgeHtml}
@@ -7578,8 +7594,8 @@
           ${crackBadgeHtml}
           <div class="card-overlay-gradient"></div>
           <div class="card-info">
-            <h2 class="card-title">${g.name}</h2>
-            <h3 class="card-developer">${g.developer || ''}</h3>
+            <h2 class="card-title">${safeName}</h2>
+            <h3 class="card-developer">${safeDeveloper}</h3>
           </div>
         `;
 
@@ -9606,7 +9622,8 @@
       }
       try {
         const list = await api.get_all_translations();
-        if (Array.isArray(list) && list.length) {
+        if (Array.isArray(list)) {
+          window.__0XSHINKY_PREVIEW_TRANSLATIONS_ERROR__ = false;
           allTranslations = list;
           updateTranslationSourceCounts();
           if (window.currentViewMode === 'translations') {
@@ -9614,9 +9631,11 @@
           }
         }
       } catch (e) {
+        window.__0XSHINKY_PREVIEW_TRANSLATIONS_ERROR__ = true;
         console.error('loadAllTranslations error:', e);
       }
       if (skGrid && skGrid.querySelector('.sk-card')) skGrid.innerHTML = '';   // lỗi / rỗng → bỏ khung xương, không để quay mãi
+      if (window.currentViewMode === 'translations') renderTranslationsGrid();
     }
 
     function updateTranslationSourceCounts() {
@@ -9664,7 +9683,7 @@
       const summary = document.getElementById('transSummaryCount');
       if (!grid) return;
 
-      const q = searchInput ? (searchInput.value || '').trim().toLowerCase() : '';
+      const q = searchInput ? normalizeText((searchInput.value || '').trim()) : '';
       let list = allTranslations.filter(item => {
         if (activeTransSource !== 'all') {
           if (activeTransSource === 'others') {
@@ -9680,7 +9699,7 @@
           if (!tStr.includes('hot') && !tStr.includes('popular') && !item.originalTeam) return false;
         }
         if (q) {
-          const hay = [item.gameTitle, item.translationTitle, item.author, item.originalTeam, (item.tags || []).join(' ')].join(' ').toLowerCase();
+          const hay = normalizeText([item.gameTitle, item.translationTitle, item.author, item.originalTeam, (item.tags || []).join(' ')].join(' '));
           if (!hay.includes(q)) return false;
         }
         return true;
@@ -9711,7 +9730,15 @@
 
       if (!totalCount) {
         grid.innerHTML = '';
-        if (empty) empty.style.display = 'flex';
+        if (empty) {
+          const message = empty.querySelector('p');
+          if (message) {
+            message.textContent = window.__0XSHINKY_PREVIEW_TRANSLATIONS_ERROR__
+              ? 'Không thể tải danh sách Việt hóa từ nguồn hiện tại.'
+              : (q ? 'Không tìm thấy bản dịch phù hợp' : 'Nguồn hiện chưa cung cấp bản Việt hóa.');
+          }
+          empty.style.display = 'flex';
+        }
         renderTransPagination(0);
         return;
       }
@@ -9729,7 +9756,13 @@
       grid.innerHTML = pagedList.map(item => {
         const color = SOURCE_COLORS[item.source] || '#a855f7';
         const isInstalled = Boolean(transInstalledMap[item.gameId]);
-        const coverUrl = item.coverUrl || `https://cdn.cloudflare.steamstatic.com/steam/apps/${item.gameId}/header.jpg`;
+        const coverCandidate = item.coverUrl || `https://cdn.cloudflare.steamstatic.com/steam/apps/${item.gameId}/header.jpg`;
+        let coverUrl = '';
+        try {
+          const parsedCover = new URL(String(coverCandidate), window.location.origin);
+          if (parsedCover.protocol === 'https:' || parsedCover.origin === window.location.origin) coverUrl = parsedCover.href;
+        } catch (_) {}
+        if (!coverUrl) coverUrl = '/products/web/Halloween Pirate Skull Poster.png';
         return `
           <div class="translation-game-card" data-gid="${escapeHtml(item.gameId)}" style="--source-accent: ${color};">
             <div class="translation-card-cover-wrap">
@@ -9739,7 +9772,7 @@
             </div>
             <div class="translation-card-body">
               <div class="translation-card-title" title="${escapeHtml(item.gameTitle)}">${escapeHtml(item.gameTitle)}</div>
-              <div class="translation-card-author">${escapeHtml(item.translationTitle || ('Bản dịch bởi ' + (item.author || item.originalTeam)))}</div>
+              <div class="translation-card-author">${escapeHtml(item.translationTitle || item.author || item.originalTeam || 'Nguồn chưa cung cấp thông tin bản dịch')}</div>
             </div>
           </div>
         `;
@@ -9891,17 +9924,17 @@
         if (!api || !api.refresh_translations) return;
         transRefreshBtn.disabled = true;
         transRefreshBtn.classList.add('is-spinning');
-        showToast('Đang kiểm tra bản dịch mới từ Revolt...', 'info');
+        showToast('Đang làm mới danh sách Việt hóa từ nguồn dữ liệu...', 'info');
         try {
           const list = await api.refresh_translations();
-          if (Array.isArray(list) && list.length) {
-            allTranslations = list;
-            updateTranslationSourceCounts();
-            renderTranslationsGrid();
-            showToast(`Đã đồng bộ ${list.length.toLocaleString()} bản dịch mới nhất!`, 'success');
-          }
+          if (!Array.isArray(list)) throw new Error('Invalid translation response');
+          window.__0XSHINKY_PREVIEW_TRANSLATIONS_ERROR__ = false;
+          allTranslations = list;
+          updateTranslationSourceCounts();
+          renderTranslationsGrid();
+          showToast(`Đã tải ${list.length.toLocaleString()} bản dịch từ nguồn hiện tại.`, 'success');
         } catch (e) {
-          showToast('Không thể kết nối tới server Revolt', 'error');
+          showToast('Không thể kết nối tới nguồn dữ liệu Việt hóa.', 'error');
         } finally {
           transRefreshBtn.disabled = false;
           transRefreshBtn.classList.remove('is-spinning');
@@ -10023,9 +10056,9 @@
 
     function updateViModalItemDetails() {
       viEl('viTitle').textContent = vi.item.gameTitle || vi.item.name || (currentGameObj ? currentGameObj.name : '—');
-      viEl('viSub').textContent = vi.item.translationTitle || (vi.item.author ? ('Bản dịch bởi ' + vi.item.author) : '');
-      viEl('viFile').textContent = vi.item.fileName || vi.item.file_name || 'pack.zip';
-      viEl('viSource').textContent = vi.item.author || (vi.item.source === 'revolt' ? 'Revolt' : (vi.item.source || '—'));
+      viEl('viSub').textContent = vi.item.translationTitle || (vi.item.author ? ('Bản dịch bởi ' + vi.item.author) : 'Nguồn chưa cung cấp tên bản dịch hoặc tác giả.');
+      viEl('viFile').textContent = vi.item.fileName || vi.item.file_name || 'Không có tên tệp trong nguồn';
+      viEl('viSource').textContent = vi.item.author || vi.item.originalTeam || (vi.item.source === 'others' ? 'Nguồn chưa cung cấp tên nhóm' : (vi.item.source || '—'));
     }
 
     async function openViModal() {

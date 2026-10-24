@@ -10,7 +10,23 @@
   const catalogCount = document.querySelector('[data-catalog-count]');
   const translationCount = document.querySelector('[data-translation-count]');
 
+  const disableDownload = () => {
+    if (!downloadLink) return;
+    downloadLink.removeAttribute('href');
+    downloadLink.setAttribute('aria-disabled', 'true');
+    downloadLink.tabIndex = -1;
+  };
+
+  const enableDownload = () => {
+    if (!downloadLink) return;
+    downloadLink.href = `${endpoint}?download=1`;
+    downloadLink.removeAttribute('aria-disabled');
+    downloadLink.removeAttribute('tabindex');
+    downloadLink.textContent = downloadLink.dataset.downloadLabel || 'Tải ứng dụng';
+  };
+
   const loadRelease = async () => {
+    disableDownload();
     try {
       const response = await fetch(endpoint, { headers: { Accept: 'application/json' }, cache: 'no-store' });
       if (!response.ok) throw new Error('Release metadata unavailable');
@@ -22,13 +38,20 @@
         const published = new Date(release.publishedAt);
         if (!Number.isNaN(published.valueOf())) {
           date.textContent = new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium' }).format(published);
+        } else {
+          date.textContent = '—';
         }
+      } else if (date) {
+        date.textContent = '—';
       }
       if (status) status.textContent = 'Đã cập nhật';
-      if (downloadLink) downloadLink.href = `${endpoint}?download=1`;
+      enableDownload();
     } catch (_) {
       if (version) version.textContent = 'Không tải được thông tin';
       if (status) status.textContent = 'Nguồn phát hành tạm thời không khả dụng';
+      if (date) date.textContent = '—';
+      disableDownload();
+      if (downloadLink) downloadLink.textContent = 'Tải tạm thời không khả dụng';
     }
   };
 

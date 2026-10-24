@@ -1,6 +1,11 @@
 (function () {
   'use strict';
 
+  let translationCache = null;
+  let translationRequest = null;
+  let translationRequestVersion = 0;
+  const trailerCache = new Map();
+
   const readJson = async (name, fallback) => {
     try {
       const response = await fetch(new URL(name, document.baseURI || window.location.href), { cache: 'no-store' });
@@ -30,11 +35,32 @@
       });
     },
     async get_all_translations() {
-      const response = await fetch('/api/translations', { cache: 'no-store' });
-      if (!response.ok) throw new Error(`Translation catalog request failed (${response.status})`);
-      const translations = await response.json();
-      if (!Array.isArray(translations)) throw new Error('Translation catalog response is not a list');
-      return translations;
+      if (translationCache !== null) return translationCache;
+      if (translationRequest) return translationRequest;
+      const requestVersion = ++translationRequestVersion;
+      translationRequest = (async () => {
+        const response = await fetch('/api/translations', { cache: 'no-store' });
+        if (!response.ok) throw new Error(`Translation catalog request failed (${response.status})`);
+        const translations = await response.json();
+        if (!Array.isArray(translations)) throw new Error('Translation catalog response is not a list');
+        if (requestVersion === translationRequestVersion) translationCache = translations;
+        return translations;
+      })().finally(() => {
+        if (requestVersion === translationRequestVersion) translationRequest = null;
+      });
+      return translationRequest;
+    },
+    async refresh_translations() {
+      translationCache = null;
+      translationRequest = null;
+      translationRequestVersion += 1;
+      return this.get_all_translations();
+    },
+    async find_translations(appid) {
+      const id = String(appid ?? '').trim();
+      if (!/^\d+$/.test(id)) return [];
+      const translations = translationCache || await this.get_all_translations();
+      return translations.filter(item => String(item.gameId ?? item.id ?? '') === id);
     },
     async get_settings() {
       const defaults = await readJson('./default_settings.json', {});
@@ -53,7 +79,7 @@
       return true;
     },
     async get_preview_site_url() {
-      return window.location.origin;
+      return new URL('/products/web/index.html', window.location.origin).toString();
     },
     async get_crack_status() {
       return {};
@@ -69,6 +95,7 @@
     async get_game_trailer(appid) {
       const id = String(appid ?? '').trim();
       if (!/^\d+$/.test(id)) return { ok: true, urls: [] };
+      if (trailerCache.has(id)) return trailerCache.get(id);
       try {
         const response = await fetch(`/api/footage?appids=${encodeURIComponent(id)}`, { cache: 'force-cache' });
         if (!response.ok) return { ok: false, urls: [] };
@@ -79,7 +106,9 @@
         const urls = Array.isArray(item?.urls)
           ? item.urls.filter(url => typeof url === 'string' && /^https:\/\//i.test(url))
           : [];
-        return { ok: true, urls };
+        const result = { ok: true, urls, details: item?.details && typeof item.details === 'object' ? item.details : null };
+        trailerCache.set(id, result);
+        return result;
       } catch (_) {
         return { ok: false, urls: [] };
       }
@@ -108,9 +137,7 @@
       return Boolean(document.fullscreenElement);
     },
     async toggle_fullscreen() {
-      if (document.fullscreenElement) await document.exitFullscreen().catch(() => {});
-      else await document.documentElement.requestFullscreen?.().catch(() => {});
-      return Boolean(document.fullscreenElement);
+      return false;
     },
     async get_active_download() {
       return null;
@@ -133,6 +160,8 @@
   });
 
   window.__0XSHINKY_PREVIEW_MODE__ = true;
+  window.__0XSHINKY_PREVIEW_CATALOG_ERROR__ = false;
+  window.__0XSHINKY_PREVIEW_TRANSLATIONS_ERROR__ = false;
   window.pywebview = window.pywebview || {};
   window.pywebview.api = previewApi;
 

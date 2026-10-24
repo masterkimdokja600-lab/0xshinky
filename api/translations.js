@@ -60,20 +60,6 @@ function normalizeTranslation(entry, packageBase) {
   const team = firstValue(entry, ['originalTeam', 'team']);
   const teamUpper = team.toUpperCase();
   const name = firstValue(entry, ['gameTitle', 'name']);
-  const authorNames = {
-    TRT: 'The Red Team',
-    CCT: 'Cánh Cụt Team',
-    GTHV: 'Game Thuần Việt',
-    GTV: 'Game Tiếng Việt',
-    HB: 'Hiu ko Béo',
-    AOWVN: 'AowVN Team',
-    ACHAU: 'Hội Game Á Châu',
-    C24: 'Charles24',
-    VHG: 'Việt Hóa Game',
-    REVOLTPRO: 'Revolt Pro',
-    REVOLT: '0xoLemon',
-    PUBLIC: 'Sưu Tầm'
-  };
   const sourceNames = {
     TRT: 'theredteam',
     CCT: 'canhcutteam',
@@ -84,9 +70,8 @@ function normalizeTranslation(entry, packageBase) {
   const source = !rawSource || rawSource === 'revolt'
     ? (sourceNames[teamUpper] || 'others')
     : rawSource;
-  const author = firstValue(entry, ['author']) || authorNames[teamUpper] || team || '0xoLemon';
-  const fileName = firstValue(entry, ['fileName', 'file_name']) || `${id}_pack.zip`;
-  const path = firstValue(entry, ['path']) || `${team || 'Revolt'}/${id}/pack.zip`;
+  const fileName = firstValue(entry, ['fileName', 'file_name']);
+  const path = firstValue(entry, ['path']);
   const packageRoot = String(packageBase || '').replace(/\/+$/, '');
   const downloadUrl = firstValue(entry, ['downloadUrl', 'download_url', 'url'])
     || (team && packageRoot ? `${packageRoot}/${team}/${id}/pack.zip` : '');
@@ -94,15 +79,10 @@ function normalizeTranslation(entry, packageBase) {
     || `https://cdn.cloudflare.steamstatic.com/steam/apps/${encodeURIComponent(id)}/header.jpg`;
   const bannerUrl = firstValue(entry, ['bannerUrl', 'banner_url']) || coverUrl;
   const launchOptions = firstValue(entry, ['launchOptions', 'launch_options']);
-  const tags = Array.isArray(entry.tags) ? entry.tags : [];
-  const defaultTags = [teamUpper === 'REVOLT' || teamUpper === 'REVOLTPRO' ? '0xoLemon' : (team || '0xoLemon'), 'Việt Hóa'];
-  const version = firstValue(entry, ['version']) || '1.0';
-  const description = firstValue(entry, ['description', 'note'])
-    || `Bản dịch Tiếng Việt cho ${name} cung cấp bởi ${author}.`;
-  const installGuide = firstValue(entry, ['installGuide'])
-    || (launchOptions
-      ? `Tham số khởi chạy khuyến nghị: ${launchOptions}`
-      : 'Cài đặt tự động hoặc giải nén thư mục bản dịch vào thư mục game.');
+  const tags = Array.isArray(entry.tags) ? entry.tags.filter(tag => typeof tag === 'string' && tag.trim()) : [];
+  const version = firstValue(entry, ['version']);
+  const description = firstValue(entry, ['description', 'note']);
+  const installGuide = firstValue(entry, ['installGuide', 'install_guide']);
 
   return {
     id,
@@ -110,21 +90,21 @@ function normalizeTranslation(entry, packageBase) {
     file_name: fileName,
     fileName,
     path,
-    size: firstValue(entry, ['size']) || 'Pack',
+    size: firstValue(entry, ['size']),
     download_url: downloadUrl || null,
     downloadUrl: downloadUrl || null,
     source,
     name,
     gameTitle: name,
-    translationTitle: firstValue(entry, ['translationTitle']) || `Bản dịch Tiếng Việt - ${name}`,
-    author,
+    translationTitle: firstValue(entry, ['translationTitle']),
+    author: firstValue(entry, ['author']),
     version,
     coverUrl,
     bannerUrl,
     description,
     installGuide,
-    tags: tags.length ? tags : defaultTags,
-    originalTeam: team || 'Revolt',
+    tags,
+    originalTeam: team,
     launchOptions
   };
 }

@@ -94,6 +94,7 @@ h1 {
 .product-arrow { color: #8e8e94; font-size: 20px; transition: transform .16s ease, color .16s ease; }
 .product-row:hover .product-name, .product-row:hover .product-arrow { color: #fff; }
 .product-row:hover .product-arrow { transform: translate(2px, -2px); }
+.product-row:focus-visible { outline: 2px solid #b5b5bc; outline-offset: 4px; }
 
 .site-footer {
   min-height: 72px;
@@ -138,8 +139,10 @@ h1 {
 }
 
 .action-link:hover { border-color: #5b5b62; background: #151517; }
+.action-link:focus-visible { outline: 2px solid #e9e9eb; outline-offset: 3px; }
 .action-link-primary { border-color: #e9e9eb; background: #e9e9eb; color: #101012; }
 .action-link-primary:hover { border-color: #fff; background: #fff; }
+.action-link[aria-disabled="true"] { opacity: .55; cursor: not-allowed; pointer-events: none; }
 
 .release-line {
   min-height: 22px;
@@ -160,12 +163,14 @@ h1 {
 
 .detail-label { display: block; margin-bottom: 7px; color: #77777e; font-size: 11px; }
 .detail-value { color: #ceced2; font-size: 13px; }
+.product-details dd { margin: 0; }
 
 .preview-section { margin-top: 78px; padding-top: 20px; border-top: 1px solid #29292d; }
 .preview-section h2 { margin: 0; color: #e9e9eb; font-size: 16px; font-weight: 550; }
 .preview-section p { margin: 10px 0 17px; color: #8e8e94; font-size: 13px; line-height: 1.6; }
 .preview-open { display: inline-flex; align-items: center; gap: 8px; color: #dedee1; font-size: 13px; text-decoration: none; }
 .preview-open:hover { color: #fff; }
+.preview-open:focus-visible, .product-switch a:focus-visible, .breadcrumbs a:focus-visible, .wordmark:focus-visible { outline: 2px solid #b5b5bc; outline-offset: 4px; }
 .preview-open span { transition: transform .16s ease; }
 .preview-open:hover span { transform: translate(2px, -2px); }
 

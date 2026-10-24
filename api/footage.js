@@ -32,8 +32,40 @@ function trailerUrls(movies) {
   return urls;
 }
 
+function storeDetails(data) {
+  if (!data || typeof data !== 'object') return null;
+  const strings = value => Array.isArray(value)
+    ? value.filter(item => typeof item === 'string' && item.trim()).map(item => item.trim())
+    : [];
+  const screenshots = Array.isArray(data.screenshots)
+    ? data.screenshots
+      .map(image => typeof image?.path_full === 'string' ? image.path_full.trim() : '')
+      .filter(url => /^https:\/\//i.test(url))
+      .filter((url, index, all) => all.indexOf(url) === index)
+      .slice(0, 8)
+    : [];
+
+  return {
+    name: typeof data.name === 'string' ? data.name.trim() : '',
+    type: typeof data.type === 'string' ? data.type.trim() : '',
+    shortDescription: typeof data.short_description === 'string' ? data.short_description.trim() : '',
+    releaseDate: typeof data.release_date?.date === 'string' ? data.release_date.date.trim() : '',
+    developers: strings(data.developers),
+    publishers: strings(data.publishers),
+    genres: Array.isArray(data.genres)
+      ? data.genres
+        .map(genre => typeof genre?.description === 'string' ? genre.description.trim() : '')
+        .filter(Boolean)
+      : [],
+    platforms: data.platforms && typeof data.platforms === 'object'
+      ? Object.fromEntries(Object.entries(data.platforms).filter(([, supported]) => supported === true))
+      : {},
+    screenshots
+  };
+}
+
 async function fetchTrailer(appid) {
-  const query = new URLSearchParams({ appids: appid, filters: 'movies', cc: 'us', l: 'en' });
+  const query = new URLSearchParams({ appids: appid, cc: 'us', l: 'en' });
   const url = `https://store.steampowered.com/api/appdetails?${query.toString()}`;
   const response = await fetch(url, {
     headers: {
@@ -47,9 +79,13 @@ async function fetchTrailer(appid) {
 
   const payload = await response.json();
   const node = payload && payload[appid];
-  if (!node || !node.success) return [];
-  const movies = node.data && Array.isArray(node.data.movies) ? node.data.movies : [];
-  return trailerUrls(movies);
+  if (!node || !node.success || !node.data || typeof node.data !== 'object') {
+    return { urls: [], details: null };
+  }
+  return {
+    urls: trailerUrls(node.data.movies),
+    details: storeDetails(node.data)
+  };
 }
 
 module.exports = async function gameTrailer(req, res) {
@@ -63,8 +99,8 @@ module.exports = async function gameTrailer(req, res) {
   res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=21600');
 
   try {
-    const urls = await fetchTrailer(appid);
-    return res.status(200).json({ items: [{ appid, urls }] });
+    const result = await fetchTrailer(appid);
+    return res.status(200).json({ items: [{ appid, ...result }] });
   } catch (_) {
     return res.status(503).json({ error: 'Trailer lookup temporarily unavailable.' });
   }
