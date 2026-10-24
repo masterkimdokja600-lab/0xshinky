@@ -100,7 +100,7 @@
       if (trailerRequests.has(id)) return trailerRequests.get(id);
       const request = (async () => {
         try {
-          // This response grows to include full Steam screenshots; never reuse an older browser-cached payload.
+          // Fetch the selected game's Steam details only after its modal opens.
           const response = await fetch(`/api/footage?appids=${encodeURIComponent(id)}`, { cache: 'no-store' });
           if (!response.ok) return { ok: false, urls: [], details: null };
           const payload = await response.json();

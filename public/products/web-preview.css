@@ -130,6 +130,11 @@
   padding-top: 22px;
   border-top: 1px solid var(--border-subtle);
 }
+#gmStoreExtra:not([hidden]) + .web-game-product-info {
+  margin-top: 16px;
+  padding-top: 0;
+  border-top: 0;
+}
 .web-game-facts-wrap { display: grid; grid-template-columns: 80px minmax(0, 1fr); align-items: center; gap: 15px; }
 .web-game-cover { width: 80px; height: 112px; border-radius: 7px; object-fit: cover; background: var(--bg-elevated); }
 .web-game-cover[hidden] { display: none; }

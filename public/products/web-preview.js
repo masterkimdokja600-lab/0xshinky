@@ -149,7 +149,8 @@
     `;
     const mediaGallery = modal.querySelector('#gmMediaGallery');
     const storeDescription = modal.querySelector('#gmStoreDescription');
-    (mediaGallery || storeDescription || summary).after(content);
+    const storeDetails = modal.querySelector('#gmStoreExtra');
+    (storeDetails || mediaGallery || storeDescription || summary).after(content);
     const releaseStatus = content.querySelector('#webGameReleaseStatus');
     getDesktopRelease().then(release => {
       const published = formatDate(release.publishedAt);
@@ -159,15 +160,19 @@
     });
 
     let activeToken = 0;
+    let lastRequestedAppId = '';
 
     const update = async () => {
       if (!modal.classList.contains('active')) {
         activeToken += 1;
+        lastRequestedAppId = '';
         return;
       }
 
-      const token = ++activeToken;
       const appid = (document.getElementById('gmAppId')?.textContent || '').trim();
+      if (!/^[0-9]+$/.test(appid) || appid === lastRequestedAppId) return;
+      const token = ++activeToken;
+      lastRequestedAppId = appid;
       const title = (document.getElementById('gmTitle')?.textContent || '').trim();
       const currentGame = (await getCatalog()).find(game => String(game.appid || game.id || '') === appid);
       if (token !== activeToken) return;
@@ -248,7 +253,17 @@
       }
       if (token !== activeToken) return;
       const hasStoreInfo = Boolean(details?.shortDescription)
+        || Boolean(details?.aboutTheGame || details?.detailedDescription)
         || (Array.isArray(details?.screenshots) && details.screenshots.length > 0)
+        || (Array.isArray(details?.videos) && details.videos.length > 0)
+        || (Array.isArray(details?.categories) && details.categories.length > 0)
+        || Boolean(details?.supportedLanguages || details?.controllerSupport)
+        || Boolean(details?.contentNotes || details?.website)
+        || Boolean(details?.pcRequirements?.minimum || details?.pcRequirements?.recommended)
+        || Boolean(details?.macRequirements?.minimum || details?.macRequirements?.recommended)
+        || Boolean(details?.linuxRequirements?.minimum || details?.linuxRequirements?.recommended)
+        || Number.isFinite(details?.achievements)
+        || Number.isFinite(details?.recommendations)
         || content.querySelector('#webGameFacts')?.querySelectorAll('.web-game-fact').length > 3;
       infoStatus.textContent = hasStoreInfo
         ? ''

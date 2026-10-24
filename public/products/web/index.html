@@ -1061,6 +1061,33 @@
     .game-store-description h3 { margin: 0; color: var(--text-main); font-size: 14px; font-weight: 650; }
     .game-store-description p { margin: 0; color: var(--text-muted); font-size: 13px; line-height: 1.6; }
     .game-media-gallery { display: grid; gap: 10px; }
+    .game-store-extra { display: grid; gap: 14px; margin-top: 22px; padding-top: 20px; border-top: 1px solid var(--border-subtle); }
+    .game-store-extra[hidden],
+    .game-store-extra-item[hidden] { display: none; }
+    .game-store-category-list { display: flex; flex-wrap: wrap; gap: 7px; }
+    .game-store-category { padding: 5px 9px; border: 1px solid var(--border-subtle); border-radius: 999px; color: var(--text-muted); font-size: 12px; line-height: 1.2; }
+    .game-store-extra-facts { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 0; color: var(--text-muted); font-size: 12px; line-height: 1.45; }
+    .game-store-extra-fact { display: flex; gap: 5px; }
+    .game-store-extra-fact dt { color: var(--text-muted); }
+    .game-store-extra-fact dd { margin: 0; color: var(--text-main); }
+    .game-store-stats { margin: 0; color: var(--text-muted); font-size: 12px; line-height: 1.45; }
+    .game-store-stats a { color: inherit; }
+    .game-store-accordion { overflow: hidden; border: 1px solid var(--border-subtle); border-radius: 8px; background: var(--bg-elevated); }
+    .game-store-accordion summary { padding: 11px 13px; color: var(--text-main); font-size: 13px; font-weight: 600; cursor: pointer; }
+    .game-store-accordion-body { padding: 0 13px 13px; color: var(--text-muted); font-size: 13px; line-height: 1.65; overflow-wrap: anywhere; }
+    .game-store-accordion-body > :first-child { margin-top: 0; }
+    .game-store-accordion-body > :last-child { margin-bottom: 0; }
+    .game-store-accordion-body img { display: block; max-width: 100%; height: auto; margin: 12px auto; border-radius: 6px; }
+    .game-store-requirement { margin-top: 13px; }
+    .game-store-requirement h4 { margin: 0 0 6px; color: var(--text-main); font-size: 12px; font-weight: 650; }
+    .game-store-requirement h5 { margin: 8px 0 4px; color: var(--text-main); font-size: 11px; font-weight: 600; }
+    .game-store-requirement p { margin: 0 0 8px; }
+    .game-store-requirement ul,
+    .game-store-requirement ol { padding-left: 20px; }
+    .game-store-accordion-body table { width: 100%; border-collapse: collapse; }
+    .game-store-accordion-body th,
+    .game-store-accordion-body td { padding: 5px 7px; border: 1px solid var(--border-subtle); text-align: left; vertical-align: top; }
+    .game-store-meta-link { color: var(--text-main); }
     .game-media-header { display: flex; align-items: center; justify-content: space-between; color: var(--text-muted); font-size: 12px; }
     .game-media-stage { position: relative; overflow: hidden; border: 1px solid var(--border-subtle); border-radius: 9px; background: #000; aspect-ratio: 16 / 9; touch-action: pan-y; }
     .game-media-surface { width: 100%; height: 100%; opacity: 1; transform: translateX(0); transition: opacity .18s ease, transform .22s cubic-bezier(.16, 1, .3, 1); }
@@ -5659,20 +5686,6 @@
 
       <div class="modal-divider"></div>
 
-      <!-- Trailer Preview -->
-      <div class="form-group toggle-row" id="trailerPreviewRow">
-        <div class="toggle-label-wrap">
-          <span class="toggle-title">Trailer Preview</span>
-          <span class="toggle-desc">Hover a game card for a moment to play its trailer (muted).</span>
-        </div>
-        <label class="switch-control">
-          <input type="checkbox" id="trailerPreviewToggle" />
-          <span class="switch-slider"></span>
-        </label>
-      </div>
-
-      <div class="modal-divider"></div>
-
       <!-- Remote Cache VDF Generator -->
       <div class="form-group">
         <label class="form-label-caps">REMOTE CACHE VDF GENERATOR</label>
@@ -5827,6 +5840,20 @@
           </button>
         </div>
         <div id="gmMediaThumbnails" class="game-media-thumbnails" role="group" aria-label="Chọn trailer hoặc ảnh chụp màn hình"></div>
+      </section>
+
+      <section id="gmStoreExtra" class="game-store-extra" hidden aria-label="Thông tin chi tiết từ Steam">
+        <div id="gmStoreCategories" class="game-store-category-list" hidden></div>
+        <dl id="gmStoreExtraFacts" class="game-store-extra-facts"></dl>
+        <p id="gmStoreStats" class="game-store-stats" hidden></p>
+        <details id="gmStoreAboutDetails" class="game-store-accordion" hidden>
+          <summary>Giới thiệu chi tiết</summary>
+          <div id="gmStoreAboutBody" class="game-store-accordion-body"></div>
+        </details>
+        <details id="gmStoreRequirementsDetails" class="game-store-accordion" hidden>
+          <summary>Cấu hình hệ thống</summary>
+          <div id="gmStoreRequirementsBody" class="game-store-accordion-body"></div>
+        </details>
       </section>
 
       <!-- Directory Config -->
@@ -7285,186 +7312,9 @@
     // nên mỗi lần dựng lại lưới là cả dàn poster mờ từ 0 lên 1 (= "nháy") dù ảnh đã nằm sẵn trong cache.
     const loadedPosters = new Map();
 
-    // ─── Trailer Preview: rê chuột lâu vào thẻ game → phát trailer (tắt tiếng) ───
-    const TRAILER_HOVER_DELAY = 650;   // ms rê chuột trên một thẻ rồi bắt đầu phát trailer
-    const TRAILER_PREFETCH_DELAY = 200; // ms: hỏi Steam lấy URL sớm hơn, để lúc đủ 650ms là có sẵn (không phải chờ mạng rồi mới phát)
-    const TRAILER_STALL_MS = 5000;     // ms: một URL video không chạy được trong khoảng này → thử URL kế tiếp (CDN chậm / bị chặn thì không có sự kiện 'error')
-    const TRAILER_RETRY_MS = 3200;     // ms: lấy URL bị lỗi tạm thời → tự thử lại khi chuột vẫn còn trên thẻ
-    const TRAILER_MAX_RETRY = 2;
-    const trailerState = { enabled: true, card: null, timer: 0, prefetch: 0, retry: 0, watchdog: 0, token: 0, video: null };
-    const trailerCache = new Map();    // appid → Promise<string[]> (danh sách URL ứng viên, rỗng = không có trailer)
-    const trailerToggle = document.getElementById('trailerPreviewToggle');
-    const trailerRow = document.getElementById('trailerPreviewRow');
-
-    function trailerBlocked() {
-      if (!trailerState.enabled || document.hidden) return true;
-      if (!(window.pywebview && window.pywebview.api && window.pywebview.api.get_game_trailer)) return true;
-      if (window.currentViewMode && window.currentViewMode !== 'games') return true;
-      if (isDownloading) return true;                                   // đừng tranh băng thông với lượt tải game
-      if (document.querySelector('.modal-backdrop.active')) return true; // đang mở hộp thoại
-      if (navigator.connection && navigator.connection.saveData) return true;
-      return false;
-    }
-
-    function loadTrailerUrls(appid) {
-      let p = trailerCache.get(appid);
-      if (!p) {
-        p = window.pywebview.api.get_game_trailer(appid)
-          .then(r => {
-            if (!r || !r.ok) { trailerCache.delete(appid); return null; }   // null = lỗi tạm thời (khác [] = game không có trailer)
-            return Array.isArray(r.urls) ? r.urls : [];
-          })
-          .catch(() => { trailerCache.delete(appid); return null; });
-        trailerCache.set(appid, p);
-      }
-      return p;
-    }
-
-    // Gỡ video đang chạy (nếu có): hủy luôn luồng tải dở để không ngốn mạng khi đã rời thẻ
-    function trailerTeardown() {
-      clearTimeout(trailerState.watchdog);
-      const v = trailerState.video;
-      trailerState.video = null;
-      if (!v) return;
-      const kill = () => {
-        try { v.pause(); } catch (e) {}
-        v.removeAttribute('src');
-        try { v.load(); } catch (e) {}
-        v.remove();
-      };
-      if (v.classList.contains('playing')) {
-        v.classList.remove('playing');   // mờ dần rồi mới gỡ
-        setTimeout(kill, 300);
-      } else {
-        kill();
-      }
-    }
-
     function trailerLeave() {
-      clearTimeout(trailerState.timer);
-      clearTimeout(trailerState.prefetch);
-      clearTimeout(trailerState.retry);
-      trailerState.token++;
-      trailerState.card = null;
-      trailerTeardown();
+      // Game-grid previews stay unloaded; Steam media is requested only from openGameModal.
     }
-
-    function trailerStart(card, attempt) {
-      attempt = attempt || 0;
-      if (trailerState.card !== card || trailerBlocked()) return;
-      const appid = card.getAttribute('data-appid');
-      if (!appid) return;
-      const token = ++trailerState.token;
-      loadTrailerUrls(appid).then(urls => {
-        if (token !== trailerState.token || trailerState.card !== card || !card.isConnected) return;
-        if (urls === null) {
-          // Lỗi tạm thời (mạng / Steam giới hạn tốc độ): chuột còn trên thẻ thì tự thử lại, khỏi bắt rê ra rê vào
-          if (attempt < TRAILER_MAX_RETRY) {
-            clearTimeout(trailerState.retry);
-            trailerState.retry = setTimeout(() => trailerStart(card, attempt + 1), TRAILER_RETRY_MS);
-          }
-          return;
-        }
-        if (!urls.length || trailerBlocked()) return;
-
-        const v = document.createElement('video');
-        v.className = 'card-trailer';
-        v.muted = true;
-        v.defaultMuted = true;
-        v.loop = true;
-        v.playsInline = true;
-        v.preload = 'auto';
-        v.disablePictureInPicture = true;
-        v.tabIndex = -1;
-        v.setAttribute('muted', '');
-        v.setAttribute('playsinline', '');
-        v.setAttribute('aria-hidden', 'true');
-
-        let i = 0;
-        // CDN chậm / bị chặn thường KHÔNG bắn 'error' mà chỉ treo → không có watchdog thì thẻ đứng im vĩnh viễn
-        const armWatchdog = () => {
-          clearTimeout(trailerState.watchdog);
-          trailerState.watchdog = setTimeout(() => {
-            if (token !== trailerState.token || v.classList.contains('playing')) return;
-            if (v.readyState >= 3) {   // đã đủ dữ liệu mà chưa phát → chỉ cần phát lại
-              const p = v.play();
-              if (p && p.catch) p.catch(() => {});
-              return;
-            }
-            tryNext();
-          }, TRAILER_STALL_MS);
-        };
-        const tryNext = () => {
-          if (token !== trailerState.token) return;
-          if (i >= urls.length) { trailerTeardown(); return; }   // hết URL: bỏ qua, ảnh poster vẫn nguyên
-          v.src = urls[i++];
-          armWatchdog();
-          const pr = v.play();
-          if (pr && pr.catch) pr.catch(() => {});
-        };
-        v.addEventListener('error', tryNext);
-        v.addEventListener('playing', () => {
-          clearTimeout(trailerState.watchdog);
-          if (token === trailerState.token) v.classList.add('playing');
-        }, { once: true });
-
-        trailerTeardown();
-        const ref = card.querySelector('.card-overlay-gradient') || card.querySelector('.card-info') || card.firstChild;
-        card.insertBefore(v, ref);
-        trailerState.video = v;
-        tryNext();
-      });
-    }
-
-    // Ủy quyền sự kiện ở cấp lưới: không cần gắn listener cho từng thẻ (lưới có thể lên tới hàng nghìn thẻ)
-    gameGrid.addEventListener('mouseover', (e) => {
-      const card = e.target.closest ? e.target.closest('.game-card') : null;
-      if (!card || card === trailerState.card) return;
-      trailerLeave();
-      if (!card.hasAttribute('data-appid')) return;
-      trailerState.card = card;
-      const pfId = card.getAttribute('data-appid');
-      trailerState.prefetch = setTimeout(() => {
-        if (trailerState.card === card && !trailerBlocked()) loadTrailerUrls(pfId);
-      }, TRAILER_PREFETCH_DELAY);
-      trailerState.timer = setTimeout(() => trailerStart(card), TRAILER_HOVER_DELAY);
-    });
-    gameGrid.addEventListener('mouseout', (e) => {
-      const card = e.target.closest ? e.target.closest('.game-card') : null;
-      if (!card || card !== trailerState.card) return;
-      if (e.relatedTarget && card.contains(e.relatedTarget)) return;   // chỉ di chuyển giữa các phần tử con của thẻ
-      trailerLeave();
-    });
-    gameGrid.addEventListener('click', () => trailerLeave(), true);
-    document.addEventListener('scroll', () => { if (trailerState.card) trailerLeave(); }, true);
-    document.addEventListener('visibilitychange', () => { if (document.hidden) trailerLeave(); });
-    window.addEventListener('blur', trailerLeave);
-
-    function applyTrailerPreview(on, persist) {
-      trailerState.enabled = Boolean(on);
-      if (trailerToggle) trailerToggle.checked = trailerState.enabled;
-      try { localStorage.setItem('0xshinky-trailer-preview', trailerState.enabled ? 'true' : 'false'); } catch (e) {}
-      if (!trailerState.enabled) trailerLeave();
-      if (persist && window.pywebview && window.pywebview.api && window.pywebview.api.set_setting) {
-        window.pywebview.api.set_setting('trailer_preview', trailerState.enabled).catch(() => {});
-      }
-    }
-    if (trailerRow) {
-      trailerRow.style.cursor = 'pointer';
-      trailerRow.addEventListener('click', (e) => {
-        if (e.target.closest('input') || e.target.closest('.switch-control')) return;
-        if (trailerToggle) {
-          trailerToggle.checked = !trailerToggle.checked;
-          trailerToggle.dispatchEvent(new Event('change'));
-        }
-      });
-    }
-    if (trailerToggle) {
-      trailerToggle.addEventListener('change', () => applyTrailerPreview(trailerToggle.checked, true));
-    }
-    let savedTrailerPreview = true;   // mặc định bật
-    try { savedTrailerPreview = localStorage.getItem('0xshinky-trailer-preview') !== 'false'; } catch (e) {}
-    applyTrailerPreview(savedTrailerPreview, false);
 
     let renderToken = 0;          // mỗi lần vẽ mới (lọc/tìm kiếm) tăng 1 → các đợt vẽ dở của lần trước tự dừng
     let gridRevealDone = false;   // hiệu ứng "hiện lần lượt" chỉ chạy ở lần vẽ đầu tiên; lọc/tìm kiếm sau đó vẽ ngay, không nháy
@@ -8208,9 +8058,6 @@
             if (typeof s.halloween === 'boolean') {
               applyHalloween(s.halloween, false, 0);
             }
-            if (typeof s.trailer_preview === 'boolean') {
-              applyTrailerPreview(s.trailer_preview, false);
-            }
             if (s.connections) {
               applyConnections(String(s.connections), false);
             }
@@ -8475,14 +8322,51 @@
     const gmMediaLabel = document.getElementById('gmMediaLabel');
     const gmStoreDescription = document.getElementById('gmStoreDescription');
     const gmStoreShortDescription = document.getElementById('gmStoreShortDescription');
+    const gmStoreExtra = document.getElementById('gmStoreExtra');
+    const gmStoreCategories = document.getElementById('gmStoreCategories');
+    const gmStoreExtraFacts = document.getElementById('gmStoreExtraFacts');
+    const gmStoreStats = document.getElementById('gmStoreStats');
+    const gmStoreAboutDetails = document.getElementById('gmStoreAboutDetails');
+    const gmStoreAboutBody = document.getElementById('gmStoreAboutBody');
+    const gmStoreRequirementsDetails = document.getElementById('gmStoreRequirementsDetails');
+    const gmStoreRequirementsBody = document.getElementById('gmStoreRequirementsBody');
     const gmMediaPrevious = document.getElementById('gmMediaPrevious');
     const gmMediaNext = document.getElementById('gmMediaNext');
+    const gameMediaThumbnailObserver = gmMediaThumbnails && typeof IntersectionObserver === 'function'
+      ? new IntersectionObserver(entries => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) loadGameMediaThumbnail(entry.target);
+        }
+      }, { root: gmMediaThumbnails, rootMargin: '0px 120px' })
+      : null;
     let gameMediaItems = [];
+    let currentStoreDetails = null;
     let gameMediaIndex = 0;
     let gameMediaRequestToken = 0;
     let gameMediaTransitionToken = 0;
     let gameMediaTransitionTimer = 0;
     let gameMediaPointerStart = null;
+
+    function loadGameMediaThumbnail(image) {
+      const source = image?.dataset.src;
+      if (!source) return;
+      image.src = source;
+      delete image.dataset.src;
+      if (gameMediaThumbnailObserver) gameMediaThumbnailObserver.unobserve(image);
+    }
+
+    function loadVisibleGameMediaThumbnails() {
+      if (!gmMediaThumbnails || gameMediaThumbnailObserver) return;
+      const root = gmMediaThumbnails.getBoundingClientRect();
+      for (const image of gmMediaThumbnails.querySelectorAll('img[data-src]')) {
+        const rect = image.getBoundingClientRect();
+        if (rect.right >= root.left && rect.left <= root.right) loadGameMediaThumbnail(image);
+      }
+    }
+
+    if (gmMediaThumbnails && !gameMediaThumbnailObserver) {
+      gmMediaThumbnails.addEventListener('scroll', loadVisibleGameMediaThumbnails, { passive: true });
+    }
 
     function safeGameMediaUrl(value) {
       try {
@@ -8492,6 +8376,225 @@
         return '';
       }
     }
+
+    function safeStoreExternalUrl(value) {
+      try {
+        const url = new URL(String(value || '').trim());
+        return url.protocol === 'https:' && !url.username && !url.password ? url.href : '';
+      } catch (_) {
+        return '';
+      }
+    }
+
+    function sanitizeStoreMarkup(markup) {
+      const template = document.createElement('template');
+      template.innerHTML = typeof markup === 'string' ? markup : '';
+      const allowed = new Set(['P', 'BR', 'H2', 'H3', 'H4', 'H5', 'H6', 'UL', 'OL', 'LI', 'STRONG', 'B', 'EM', 'I', 'U', 'BLOCKQUOTE', 'IMG', 'A', 'HR', 'DIV', 'SPAN', 'TABLE', 'THEAD', 'TBODY', 'TR', 'TD', 'TH']);
+      const blocked = new Set(['SCRIPT', 'STYLE', 'IFRAME', 'OBJECT', 'EMBED', 'FORM', 'INPUT', 'BUTTON', 'SVG', 'MATH', 'LINK', 'META', 'VIDEO', 'AUDIO', 'SOURCE']);
+
+      const copyNode = node => {
+        if (node.nodeType === Node.TEXT_NODE) return document.createTextNode(node.nodeValue || '');
+        if (node.nodeType !== Node.ELEMENT_NODE) return null;
+        const tag = node.tagName;
+        if (blocked.has(tag)) return null;
+        const children = Array.from(node.childNodes).map(copyNode).filter(Boolean);
+        if (!allowed.has(tag)) {
+          const fragment = document.createDocumentFragment();
+          fragment.append(...children);
+          return fragment;
+        }
+
+        const safeNode = document.createElement(tag.toLowerCase());
+        if (tag === 'IMG') {
+          const src = safeStoreExternalUrl(node.getAttribute('src'));
+          if (!src) return null;
+          safeNode.src = src;
+          safeNode.alt = (node.getAttribute('alt') || '').slice(0, 500);
+          safeNode.loading = 'lazy';
+          safeNode.decoding = 'async';
+          safeNode.referrerPolicy = 'no-referrer';
+          return safeNode;
+        }
+        if (tag === 'A') {
+          const href = safeStoreExternalUrl(node.getAttribute('href'));
+          if (href) {
+            safeNode.href = href;
+            safeNode.target = '_blank';
+            safeNode.rel = 'noopener noreferrer nofollow';
+          }
+        }
+        safeNode.append(...children);
+        return safeNode;
+      };
+
+      const fragment = document.createDocumentFragment();
+      Array.from(template.content.childNodes).map(copyNode).filter(Boolean).forEach(node => fragment.append(node));
+      return fragment;
+    }
+
+    function storeMarkupText(markup) {
+      const template = document.createElement('template');
+      template.innerHTML = String(markup || '').replace(/<br\s*\/?\s*>/gi, ', ');
+      return (template.content.textContent || '').replace(/\s+/g, ' ').trim();
+    }
+
+    function appendStoreFact(label, value) {
+      const text = typeof value === 'string' ? value.trim() : '';
+      if (!text || !gmStoreExtraFacts) return;
+      const row = document.createElement('div');
+      row.className = 'game-store-extra-fact';
+      const term = document.createElement('dt');
+      term.textContent = label;
+      const detail = document.createElement('dd');
+      detail.textContent = text;
+      row.append(term, detail);
+      gmStoreExtraFacts.append(row);
+    }
+
+    function appendStoreLinkFact(label, value) {
+      const href = safeStoreExternalUrl(value);
+      if (!href || !gmStoreExtraFacts) return;
+      const row = document.createElement('div');
+      row.className = 'game-store-extra-fact';
+      const term = document.createElement('dt');
+      term.textContent = label;
+      const detail = document.createElement('dd');
+      const link = document.createElement('a');
+      link.className = 'game-store-meta-link';
+      link.href = href;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.textContent = href.replace(/^https:\/\//i, '').replace(/\/$/, '');
+      detail.append(link);
+      row.append(term, detail);
+      gmStoreExtraFacts.append(row);
+    }
+
+    function renderGameStoreDetails(details) {
+      currentStoreDetails = details && typeof details === 'object' ? details : null;
+      const value = currentStoreDetails;
+      if (gmStoreCategories) {
+        const categories = Array.isArray(value?.categories) ? value.categories.filter(item => typeof item === 'string' && item.trim()) : [];
+        gmStoreCategories.replaceChildren(...categories.map(label => {
+          const tag = document.createElement('span');
+          tag.className = 'game-store-category';
+          tag.textContent = label.trim();
+          return tag;
+        }));
+        gmStoreCategories.hidden = categories.length === 0;
+      }
+      if (gmStoreExtraFacts) {
+        gmStoreExtraFacts.replaceChildren();
+        const languages = storeMarkupText(value?.supportedLanguages);
+        appendStoreFact('Ngôn ngữ hỗ trợ', languages);
+        appendStoreFact('Hỗ trợ tay cầm', value?.controllerSupport);
+        appendStoreFact('Ghi chú nội dung', value?.contentNotes);
+        appendStoreLinkFact('Trang web', value?.website);
+      }
+
+      if (gmStoreStats) {
+        gmStoreStats.replaceChildren();
+        const stats = [];
+        if (Number.isFinite(value?.achievements)) stats.push(`Thành tựu Steam: ${value.achievements}`);
+        if (Number.isFinite(value?.recommendations)) stats.push(`Đề xuất Steam: ${value.recommendations.toLocaleString()}`);
+        if (Number.isFinite(value?.metacritic?.score)) stats.push(`Metacritic: ${value.metacritic.score}/100`);
+        if (stats.length) gmStoreStats.append(document.createTextNode(stats.join(' · ')));
+        const score = Number.isFinite(value?.metacritic?.score) ? String(value.metacritic.score) : '';
+        const metacriticUrl = safeStoreExternalUrl(value?.metacritic?.url);
+        if (score && metacriticUrl) {
+          gmStoreStats.append(document.createTextNode(' '));
+          const link = document.createElement('a');
+          link.className = 'game-store-meta-link';
+          link.href = metacriticUrl;
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+          link.textContent = 'Xem điểm';
+          gmStoreStats.append(link);
+        }
+        gmStoreStats.hidden = stats.length === 0;
+      }
+
+      const about = value?.aboutTheGame || value?.detailedDescription || '';
+      if (gmStoreAboutDetails) {
+        gmStoreAboutDetails.hidden = !about.trim();
+        gmStoreAboutDetails.open = false;
+      }
+      if (gmStoreAboutBody) {
+        gmStoreAboutBody.replaceChildren();
+        gmStoreAboutBody.dataset.loaded = 'false';
+      }
+
+      const requirementGroups = [
+        ['Windows', value?.pcRequirements],
+        ['macOS', value?.macRequirements],
+        ['Linux', value?.linuxRequirements]
+      ].filter(([, requirements]) => requirements && (requirements.minimum || requirements.recommended));
+      if (gmStoreRequirementsDetails) {
+        gmStoreRequirementsDetails.hidden = requirementGroups.length === 0;
+        gmStoreRequirementsDetails.open = false;
+      }
+      if (gmStoreRequirementsBody) {
+        gmStoreRequirementsBody.replaceChildren();
+        gmStoreRequirementsBody.dataset.loaded = 'false';
+      }
+
+      const hasMore = Boolean(
+        (Array.isArray(value?.categories) && value.categories.length)
+        || storeMarkupText(value?.supportedLanguages)
+        || value?.controllerSupport
+        || value?.contentNotes
+        || safeStoreExternalUrl(value?.website)
+        || Number.isFinite(value?.achievements)
+        || Number.isFinite(value?.recommendations)
+        || Number.isFinite(value?.metacritic?.score)
+        || about.trim()
+        || requirementGroups.length
+      );
+      if (gmStoreExtra) gmStoreExtra.hidden = !hasMore;
+    }
+
+    function renderGameStoreAbout() {
+      if (!gmStoreAboutBody || gmStoreAboutBody.dataset.loaded === 'true') return;
+      const markup = currentStoreDetails?.aboutTheGame || currentStoreDetails?.detailedDescription || '';
+      gmStoreAboutBody.replaceChildren(sanitizeStoreMarkup(markup));
+      gmStoreAboutBody.dataset.loaded = 'true';
+    }
+
+    function renderGameStoreRequirements() {
+      if (!gmStoreRequirementsBody || gmStoreRequirementsBody.dataset.loaded === 'true') return;
+      const groups = [
+        ['Windows', currentStoreDetails?.pcRequirements],
+        ['macOS', currentStoreDetails?.macRequirements],
+        ['Linux', currentStoreDetails?.linuxRequirements]
+      ];
+      const fragment = document.createDocumentFragment();
+      for (const [platform, requirements] of groups) {
+        if (!requirements || (!requirements.minimum && !requirements.recommended)) continue;
+        const group = document.createElement('section');
+        group.className = 'game-store-requirement';
+        const heading = document.createElement('h4');
+        heading.textContent = platform;
+        group.append(heading);
+        for (const [label, markup] of [['Tối thiểu', requirements.minimum], ['Đề nghị', requirements.recommended]]) {
+          if (!markup) continue;
+          const item = document.createElement('div');
+          const title = document.createElement('h5');
+          title.textContent = label;
+          item.append(title, sanitizeStoreMarkup(markup));
+          group.append(item);
+        }
+        fragment.append(group);
+      }
+      gmStoreRequirementsBody.replaceChildren(fragment);
+      gmStoreRequirementsBody.dataset.loaded = 'true';
+    }
+
+    if (gmStoreAboutDetails) gmStoreAboutDetails.addEventListener('toggle', () => {
+      if (gmStoreAboutDetails.open) renderGameStoreAbout();
+    });
+    if (gmStoreRequirementsDetails) gmStoreRequirementsDetails.addEventListener('toggle', () => {
+      if (gmStoreRequirementsDetails.open) renderGameStoreRequirements();
+    });
 
     function stopGameMediaVideo() {
       if (!gmMediaVideo) return;
@@ -8515,6 +8618,13 @@
         gmMediaImage.removeAttribute('src');
         gmMediaImage.hidden = true;
       }
+      if (gmMediaThumbnails) gmMediaThumbnails.querySelectorAll('img').forEach(image => {
+        if (gameMediaThumbnailObserver) gameMediaThumbnailObserver.unobserve(image);
+        image.removeAttribute('src');
+        delete image.dataset.src;
+      });
+      if (gmStoreAboutBody) gmStoreAboutBody.querySelectorAll('img').forEach(image => image.removeAttribute('src'));
+      if (gmStoreRequirementsBody) gmStoreRequirementsBody.querySelectorAll('img').forEach(image => image.removeAttribute('src'));
       if (gmMediaSurface) {
         gmMediaSurface.classList.remove('is-leaving-next', 'is-leaving-previous', 'is-entering-next', 'is-entering-previous');
       }
@@ -8527,6 +8637,7 @@
       if (gmMediaCount) gmMediaCount.textContent = '';
       if (gmStoreDescription) gmStoreDescription.hidden = true;
       if (gmStoreShortDescription) gmStoreShortDescription.textContent = '';
+      renderGameStoreDetails(null);
     }
 
     function currentGameMediaIndex(index) {
@@ -8607,7 +8718,10 @@
           const thumbnails = Array.from(gmMediaThumbnails.querySelectorAll('.game-media-thumb'));
           thumbnails.forEach((button, buttonIndex) => {
             button.setAttribute('aria-pressed', buttonIndex === nextIndex ? 'true' : 'false');
-            if (buttonIndex === nextIndex) button.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: animate ? 'smooth' : 'auto' });
+            if (buttonIndex === nextIndex) {
+              button.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: animate ? 'smooth' : 'auto' });
+              loadGameMediaThumbnail(button.querySelector('img'));
+            }
           });
         }
 
@@ -8640,15 +8754,17 @@
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'game-media-thumb';
-      button.setAttribute('aria-label', item.type === 'video' ? 'Xem trailer game' : `Xem ảnh chụp màn hình ${item.number}`);
+      button.setAttribute('aria-label', item.type === 'video' ? `Xem trailer: ${item.title || 'Game'}` : `Xem ảnh chụp màn hình ${item.number}`);
       button.setAttribute('aria-pressed', 'false');
       if (item.thumbnailUrl) {
         const image = document.createElement('img');
-        image.src = item.thumbnailUrl;
+        image.dataset.src = item.thumbnailUrl;
         image.alt = '';
         image.loading = 'lazy';
         image.decoding = 'async';
+        image.fetchPriority = 'low';
         button.append(image);
+        if (gameMediaThumbnailObserver) gameMediaThumbnailObserver.observe(image);
       }
       if (item.type === 'video') {
         const play = document.createElement('span');
@@ -8665,11 +8781,23 @@
       const description = typeof details?.shortDescription === 'string' ? details.shortDescription.trim() : '';
       if (gmStoreShortDescription) gmStoreShortDescription.textContent = description;
       if (gmStoreDescription) gmStoreDescription.hidden = !description;
+      renderGameStoreDetails(details);
 
       gameMediaItems = [];
       const urls = Array.isArray(result?.urls) ? result.urls.map(safeGameMediaUrl).filter(Boolean) : [];
       const headerImage = safeGameMediaUrl(details?.headerImage || game?.header_url || game?.poster_url);
-      if (urls.length) gameMediaItems.push({ type: 'video', urls, thumbnailUrl: headerImage, title: 'Trailer' });
+      const videos = Array.isArray(details?.videos) ? details.videos : [];
+      for (const video of videos) {
+        const videoUrls = Array.isArray(video?.urls) ? video.urls.map(safeGameMediaUrl).filter(Boolean) : [];
+        if (!videoUrls.length) continue;
+        gameMediaItems.push({
+          type: 'video',
+          urls: videoUrls,
+          thumbnailUrl: safeGameMediaUrl(video.thumbnailUrl) || headerImage,
+          title: typeof video.title === 'string' && video.title.trim() ? video.title.trim() : 'Trailer'
+        });
+      }
+      if (!gameMediaItems.some(item => item.type === 'video') && urls.length) gameMediaItems.push({ type: 'video', urls, thumbnailUrl: headerImage, title: 'Trailer' });
 
       const screenshots = Array.isArray(details?.screenshots) ? details.screenshots : [];
       for (const [index, screenshot] of screenshots.entries()) {
@@ -8690,8 +8818,9 @@
         return;
       }
 
-      gmMediaThumbnails.replaceChildren(...gameMediaItems.map(addGameMediaThumbnail));
       gmMediaGallery.hidden = false;
+      gmMediaThumbnails.replaceChildren(...gameMediaItems.map(addGameMediaThumbnail));
+      loadVisibleGameMediaThumbnails();
       setGameMediaSlide(0, 1, false);
     }
 

@@ -1,18 +1,19 @@
-function trailerUrls(movies) {
+function trailerItems(movies) {
   if (!Array.isArray(movies)) return [];
 
   const ordered = movies
     .filter(movie => movie && typeof movie === 'object')
     .sort((a, b) => Number(Boolean(b.highlight)) - Number(Boolean(a.highlight)));
-  const urls = [];
-  const add = url => {
-    if (typeof url === 'string' && /^https?:\/\//i.test(url)) {
-      const secureUrl = url.replace(/^http:\/\//i, 'https://');
-      if (!urls.includes(secureUrl)) urls.push(secureUrl);
-    }
-  };
-
-  for (const movie of ordered.slice(0, 5)) {
+  return ordered.map(movie => {
+    const urls = [];
+    const add = url => {
+      if (typeof url === 'string' && /^https?:\/\//i.test(url)) {
+        const secureUrl = url.replace(/^http:\/\//i, 'https://');
+        if (!urls.includes(secureUrl)) urls.push(secureUrl);
+      }
+    };
+    for (const quality of ['max', '480']) add(movie.mp4?.[quality]);
+    for (const quality of ['max', '480']) add(movie.webm?.[quality]);
     const stream = movie.hls_h264 || movie.dash_h264;
     if (typeof stream === 'string' && stream.includes('/')) {
       const [clean, query] = stream.split('?', 2);
@@ -24,12 +25,18 @@ function trailerUrls(movies) {
         add(micro.replace('video.fastly.steamstatic.com', 'video.akamai.steamstatic.com'));
       }
     }
+    return {
+      title: typeof movie.name === 'string' && movie.name.trim() ? movie.name.trim() : 'Trailer',
+      thumbnailUrl: typeof movie.thumbnail === 'string' && /^https?:\/\//i.test(movie.thumbnail.trim())
+        ? movie.thumbnail.trim().replace(/^http:\/\//i, 'https://')
+        : '',
+      urls
+    };
+  }).filter(movie => movie.urls.length > 0);
+}
 
-    for (const quality of ['480', 'max']) add(movie.mp4?.[quality]);
-    for (const quality of ['480', 'max']) add(movie.webm?.[quality]);
-  }
-
-  return urls;
+function trailerUrls(movies) {
+  return [...new Set(trailerItems(movies).flatMap(movie => movie.urls))];
 }
 
 function storeDetails(data) {
@@ -37,6 +44,15 @@ function storeDetails(data) {
   const strings = value => Array.isArray(value)
     ? value.filter(item => typeof item === 'string' && item.trim()).map(item => item.trim())
     : [];
+  const richText = value => typeof value === 'string' ? value.trim() : '';
+  const requirements = value => {
+    if (typeof value === 'string') return { minimum: value.trim(), recommended: '' };
+    if (!value || typeof value !== 'object') return { minimum: '', recommended: '' };
+    return {
+      minimum: richText(value.minimum),
+      recommended: richText(value.recommended)
+    };
+  };
   const screenshots = Array.isArray(data.screenshots)
     ? data.screenshots
       .map(image => ({
@@ -46,13 +62,15 @@ function storeDetails(data) {
       .filter(image => /^https:\/\//i.test(image.fullUrl))
       .map(image => ({ ...image, thumbnailUrl: /^https:\/\//i.test(image.thumbnailUrl) ? image.thumbnailUrl : image.fullUrl }))
       .filter((image, index, all) => all.findIndex(item => item.fullUrl === image.fullUrl) === index)
-      .slice(0, 8)
     : [];
 
   return {
     name: typeof data.name === 'string' ? data.name.trim() : '',
     type: typeof data.type === 'string' ? data.type.trim() : '',
     shortDescription: typeof data.short_description === 'string' ? data.short_description.trim() : '',
+    aboutTheGame: richText(data.about_the_game),
+    detailedDescription: richText(data.detailed_description),
+    videos: trailerItems(data.movies),
     releaseDate: typeof data.release_date?.date === 'string' ? data.release_date.date.trim() : '',
     developers: strings(data.developers),
     publishers: strings(data.publishers),
@@ -61,9 +79,29 @@ function storeDetails(data) {
         .map(genre => typeof genre?.description === 'string' ? genre.description.trim() : '')
         .filter(Boolean)
       : [],
+    categories: Array.isArray(data.categories)
+      ? data.categories
+        .map(category => typeof category?.description === 'string' ? category.description.trim() : '')
+        .filter(Boolean)
+      : [],
     platforms: data.platforms && typeof data.platforms === 'object'
       ? Object.fromEntries(Object.entries(data.platforms).filter(([, supported]) => supported === true))
       : {},
+    supportedLanguages: richText(data.supported_languages),
+    controllerSupport: typeof data.controller_support === 'string' ? data.controller_support.trim() : '',
+    website: typeof data.website === 'string' ? data.website.trim() : '',
+    contentNotes: richText(data.content_descriptors?.notes),
+    pcRequirements: requirements(data.pc_requirements),
+    macRequirements: requirements(data.mac_requirements),
+    linuxRequirements: requirements(data.linux_requirements),
+    achievements: data.achievements?.total != null && Number.isFinite(Number(data.achievements.total)) ? Number(data.achievements.total) : null,
+    recommendations: data.recommendations?.total != null && Number.isFinite(Number(data.recommendations.total)) ? Number(data.recommendations.total) : null,
+    metacritic: data.metacritic && typeof data.metacritic === 'object'
+      ? {
+        score: data.metacritic.score != null && Number.isFinite(Number(data.metacritic.score)) ? Number(data.metacritic.score) : null,
+        url: typeof data.metacritic.url === 'string' ? data.metacritic.url.trim() : ''
+      }
+      : null,
     headerImage: typeof data.header_image === 'string' ? data.header_image.trim() : '',
     screenshots
   };
