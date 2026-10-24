@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- Thời điểm ra mắt: countdown đếm tới đây; index.html cũng đọc meta này để biết lúc nào chuyển "Đã ra mắt" / tự ẩn banner.
+       Đổi giờ thì sửa ở đây (và dòng chữ "Ra mắt: …" bên dưới cho khớp). -->
+  <meta name="pbz-release" content="2026-10-29T00:00:00+07:00" />
+  <title>Phantom Blade Zero — Release Countdown</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --logo-w: min(88vw, 640px);          /* chiều rộng tối đa của logo */
+      --logo-h: clamp(70px, 16vh, 150px);  /* chiều cao tối đa của logo */
+      --red: #e02020;
+      --red-light: #ff3c3c;
+      --red-glow: rgba(224, 32, 32, 0.55);
+      --card-bg: #1a0a0a;
+      --card-top: #200e0e;
+      --card-bottom: #140707;
+      --text: #f0e8e8;
+      --label: rgba(240,220,220,0.55);
+      --flip-h: clamp(54px, 9vw, 76px);
+      --flip-w: clamp(34px, 5.8vw, 54px);
+    }
+
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: #0a0000;
+    }
+
+    /* ── Background ── */
+    .bg {
+      position: fixed; inset: 0;
+      background-image: url('https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/4115450/1cd52ca84a3d974c4206e9cb90231956324c5999/library_hero_2x.jpg');
+      background-size: cover;
+      background-position: center top;
+      transform: scale(1.04);
+      filter: brightness(.72) saturate(1.1);
+    }
+
+    /* Four-direction gradient: heavy on bottom, moderate sides, subtle top */
+    .bg-gradient {
+      position: fixed; inset: 0;
+      background:
+        linear-gradient(to bottom,
+          rgba(5,0,0,.45) 0%,
+          rgba(5,0,0,.05) 20%,
+          rgba(5,0,0,.05) 60%,
+          rgba(5,0,0,.88) 100%),
+        linear-gradient(to right,
+          rgba(5,0,0,.60) 0%,
+          transparent 25%,
+          transparent 75%,
+          rgba(5,0,0,.60) 100%);
+    }
+
+    /* ── Layout ── */
+    .stage {
+      position: relative; z-index: 1;
+      width: 100%; height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      padding: 20px 16px 5vh;
+      gap: 0;
+    }
+
+    /* ── Game title ── */
+    .game-eyebrow {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 3.5px;
+      text-transform: uppercase;
+      color: var(--red-light);
+      margin-bottom: 10px;
+      opacity: .85;
+      text-shadow: 0 0 18px var(--red-glow);
+    }
+
+    .game-title {
+      font-size: clamp(2.2rem, 5vw, 4.2rem);
+      font-weight: 900;
+      letter-spacing: -1px;
+      color: #fff;
+      text-shadow:
+        0 2px 32px rgba(0,0,0,.9),
+        0 0 60px rgba(224,32,32,.35);
+      line-height: 1;
+      text-align: center;
+      margin-bottom: 6px;
+    }
+
+    /* Logo thay cho chữ tiêu đề (nếu ảnh lỗi → tự quay về chữ nhờ onerror) */
+    .game-logo {
+      display: block;
+      width: auto; height: auto;
+      max-width: var(--logo-w);
+      max-height: var(--logo-h);
+      object-fit: contain;
+      filter: drop-shadow(0 2px 18px rgba(0,0,0,.85)) drop-shadow(0 0 28px rgba(224,32,32,.28));
+    }
+    /* Ảnh logo Steam là canvas 16:9 trong suốt, chữ nằm giữa rất nhỏ. Script bên dưới tự cắt viền trong suốt;
+       nếu CDN không cho đọc pixel thì dùng cách này: ép theo chiều RỘNG và rút phần trống trên/dưới (không cắt mất nét nào). */
+    .game-logo.untrimmed {
+      width: var(--logo-w);
+      max-height: none;
+      margin-block: calc(var(--logo-w) * -0.2);
+    }
+
+    .release-label {
+      font-size: clamp(12px, 1.8vw, 14px);
+      letter-spacing: .8px;
+      color: rgba(255,235,235,.82);
+      margin-bottom: 18px;
+      text-align: center;
+    }
+    .release-label strong {
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    /* ── Countdown row ── */
+    .countdown {
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      gap: clamp(5px, 1.4vw, 14px);
+      width: min(100%, 660px);
+    }
+
+    .flip-unit {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .flip-unit-label {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 1.8px;
+      text-transform: uppercase;
+      color: var(--label);
+    }
+
+    .flip-pair { display: flex; gap: 4px; }
+
+    /* Each half clips one centered glyph. Idle state has exactly one visible digit. */
+    .flip-card {
+      position: relative;
+      width: var(--flip-w);
+      height: var(--flip-h);
+      perspective: 700px;
+      isolation: isolate;
+    }
+    .flip-top, .flip-bottom, .flip-flap, .flip-flap-back {
+      position: absolute;
+      left: 0;
+      width: 100%;
+      height: 50%;
+      overflow: hidden;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+      transform-style: preserve-3d;
+    }
+    .flip-top, .flip-flap {
+      top: 0;
+      border-radius: 7px 7px 0 0;
+      background: var(--card-top);
+      border-bottom: 1px solid rgba(0,0,0,.72);
+    }
+    .flip-bottom, .flip-flap-back {
+      bottom: 0;
+      border-radius: 0 0 7px 7px;
+      background: var(--card-bottom);
+    }
+    .flip-top span, .flip-bottom span, .flip-flap span, .flip-flap-back span {
+      position: absolute;
+      left: 0;
+      width: 100%;
+      height: var(--flip-h);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: clamp(2rem, 5.4vw, 3.25rem);
+      line-height: 1;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      color: var(--red-light);
+      text-shadow: 0 0 16px var(--red-glow);
+    }
+    .flip-top span, .flip-flap span { top: 0; }
+    .flip-bottom span, .flip-flap-back span { bottom: 0; }
+
+    .flip-flap, .flip-flap-back {
+      z-index: 3;
+      visibility: hidden;
+      pointer-events: none;
+    }
+    .flip-flap { transform-origin: bottom center; }
+    .flip-flap-back {
+      transform-origin: top center;
+      transform: rotateX(90deg);
+    }
+
+    @keyframes flipTop {
+      from { transform: rotateX(0deg); }
+      to { transform: rotateX(-90deg); }
+    }
+    @keyframes flipBottom {
+      from { transform: rotateX(90deg); }
+      to { transform: rotateX(0deg); }
+    }
+    .flip-card.flipping .flip-flap {
+      visibility: visible;
+      animation: flipTop .18s cubic-bezier(.55,.06,.68,.19) forwards;
+    }
+    .flip-card.flipping .flip-flap-back {
+      visibility: visible;
+      animation: flipBottom .2s .18s cubic-bezier(.22,.61,.36,1) forwards;
+    }
+
+    /* Separator colon */
+    .sep {
+      font-size: 3rem;
+      font-weight: 900;
+      color: var(--red);
+      text-shadow: 0 0 16px var(--red-glow);
+      line-height: var(--flip-h);
+      margin-top: 0;
+      animation: sep-blink 1s step-start infinite;
+    }
+    @keyframes sep-blink {
+      0%, 49% { opacity: 1; }
+      50%, 100% { opacity: .25; }
+    }
+
+    /* ── Trạng thái "Đã ra mắt": thay đồng hồ bằng huy hiệu + nút Mở game (kiểu Netflix: Coming Soon → Play) ── */
+    .live { display: none; flex-direction: column; align-items: center; gap: 14px; }
+    body.is-live .live { display: flex; }
+    body.is-live .countdown, body.is-live .note { display: none; }
+    .live-badge {
+      display: flex; align-items: center; gap: .45em;
+      font-size: clamp(22px, 3.4vw, 40px);
+      font-weight: 900; letter-spacing: .16em; text-transform: uppercase; line-height: 1;
+      color: var(--red-light);
+      text-shadow: 0 0 22px var(--red-glow);
+    }
+    .live-dot {
+      width: .36em; height: .36em; border-radius: 50%;
+      background: var(--red);
+      animation: live-pulse 1.8s ease-out infinite;
+    }
+    @keyframes live-pulse {
+      0%   { box-shadow: 0 0 0 0 rgba(224,32,32,.8), 0 0 6px 2px rgba(224,32,32,.4); }
+      60%  { box-shadow: 0 0 0 .5em rgba(224,32,32,0), 0 0 14px 5px rgba(224,32,32,.6); }
+      100% { box-shadow: 0 0 0 0 rgba(224,32,32,.8), 0 0 6px 2px rgba(224,32,32,.4); }
+    }
+    .live-cta {
+      display: inline-flex; align-items: center; gap: 10px;
+      padding: 12px 28px 12px 22px;
+      border: 0; border-radius: 999px;
+      font: inherit; font-size: 14px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase;
+      color: #fff;
+      background: linear-gradient(to bottom, #ff3c3c, #c41818);
+      box-shadow: 0 6px 22px rgba(224,32,32,.45), inset 0 1px 0 rgba(255,255,255,.25);
+      cursor: pointer;
+      transition: transform .15s, filter .15s, box-shadow .15s;
+    }
+    .live-cta[hidden] { display: none; }   /* nút chỉ hiện khi game đã có trong danh mục launcher */
+    .live-cta:hover { transform: translateY(-1px); filter: brightness(1.1); box-shadow: 0 8px 28px rgba(224,32,32,.55), inset 0 1px 0 rgba(255,255,255,.3); }
+    .live-cta:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+    .live-cta svg { width: 16px; height: 16px; }
+
+    /* ── Bottom note ── */
+    .note {
+      margin-top: 14px;
+      font-size: 11px;
+      color: rgba(255,235,235,.68);
+      letter-spacing: .35px;
+      text-align: center;
+    }
+
+    @media (max-width: 620px) {
+      :root { --flip-h: clamp(46px, 12vw, 60px); --flip-w: clamp(28px, 7.4vw, 40px); }
+      .stage { padding: 14px 8px 4vh; }
+      .game-eyebrow { margin-bottom: 6px; }
+      .game-title { font-size: clamp(1.65rem, 8vw, 2.4rem); }
+      .release-label { margin-bottom: 13px; }
+      .countdown { gap: 4px; }
+      .flip-pair { gap: 2px; }
+      .flip-unit-label { font-size: 8px; letter-spacing: 1px; }
+      .sep { font-size: 1.8rem; }
+      .note { margin-top: 10px; font-size: 9.5px; }
+    }
+
+    @media (max-height: 430px) and (max-width: 760px) {
+      .stage { justify-content: center; padding: 12px; }
+      .game-eyebrow { display: none; }
+      .game-title { font-size: clamp(1.5rem, 5vw, 2.4rem); }
+      :root { --logo-h: clamp(52px, 12vh, 80px); }
+      .release-label { margin-bottom: 10px; }
+      .note { margin-top: 8px; }
+    }
+
+    /* ── Chuyển mượt giữa bố cục MỞ RỘNG (căn giữa) và THU GỌN (trái – phải) ── */
+    .stage        { transition: padding .5s cubic-bezier(.25,1,.5,1), column-gap .5s cubic-bezier(.25,1,.5,1); }
+    .game-eyebrow { transition: margin .45s ease, opacity .35s ease, font-size .5s cubic-bezier(.25,1,.5,1); }
+    .game-title   { transition: margin .5s cubic-bezier(.25,1,.5,1); }
+    .game-logo    { transition: max-height .5s cubic-bezier(.25,1,.5,1), width .5s cubic-bezier(.25,1,.5,1), margin-block .5s cubic-bezier(.25,1,.5,1); }
+    .release-label{ transition: margin .5s cubic-bezier(.25,1,.5,1), font-size .5s cubic-bezier(.25,1,.5,1); }
+    .note         { transition: margin .5s cubic-bezier(.25,1,.5,1), font-size .5s cubic-bezier(.25,1,.5,1); }
+    .countdown    { transition: gap .5s cubic-bezier(.25,1,.5,1), width .5s cubic-bezier(.25,1,.5,1); }
+    .flip-card    { transition: width .5s cubic-bezier(.25,1,.5,1), height .5s cubic-bezier(.25,1,.5,1); }
+    .flip-unit-label { transition: font-size .5s cubic-bezier(.25,1,.5,1); }
+    .sep          { transition: font-size .5s cubic-bezier(.25,1,.5,1), line-height .5s cubic-bezier(.25,1,.5,1); }
+    .flip-top span, .flip-bottom span, .flip-flap span, .flip-flap-back span {
+      transition: font-size .5s cubic-bezier(.25,1,.5,1);
+    }
+
+    /* Dải thu gọn: giữ chuẩn xác 100% vị trí, kích thước và lề từ file backup của bạn */
+    body.is-compact {
+      --logo-w: min(40vw, 740px);
+      --logo-h: clamp(44px, 18vh, 72px);
+      --flip-h: clamp(46px, 5.2vw, 96px);
+      --flip-w: clamp(30px, 3.5vw, 65px);
+    }
+    body.is-compact .bg-gradient {
+      background:
+        linear-gradient(to right,
+          rgba(5,0,0,.72) 0%,
+          rgba(5,0,0,.38) 42%,
+          transparent 68%),
+        linear-gradient(to bottom,
+          rgba(5,0,0,.45) 0%,
+          rgba(5,0,0,.05) 20%,
+          rgba(5,0,0,.05) 60%,
+          rgba(5,0,0,.88) 100%),
+        linear-gradient(to right,
+          rgba(5,0,0,.60) 0%,
+          transparent 25%,
+          transparent 75%,
+          rgba(5,0,0,.60) 100%);
+    }
+    body.is-compact .stage {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-rows: 1fr auto auto auto auto;
+      column-gap: clamp(16px, 3vw, 48px);
+      align-items: end;
+      justify-items: start;
+      justify-content: normal;
+      padding: 0 clamp(20px, 2.4vw, 44px) clamp(16px, 2.6vh, 26px);
+    }
+    body.is-compact .game-eyebrow  { grid-column: 1; grid-row: 2; margin-bottom: 22px; }
+    body.is-compact .game-title    { grid-column: 1; grid-row: 3; text-align: left; margin-bottom: 0; }
+    body.is-compact .release-label { grid-column: 1; grid-row: 4; text-align: left; margin: 24px 0 0; font-size: 14px; }
+    body.is-compact .note          { grid-column: 1; grid-row: 5; text-align: left; margin-top: 4px; }
+    body.is-compact .countdown {
+      grid-column: 2; grid-row: 1 / -1;
+      align-self: end;
+      justify-self: end;
+      width: auto;
+      justify-content: flex-end;
+      gap: clamp(8px, 1.4vw, 18px);
+    }
+    body.is-compact .live { grid-column: 2; grid-row: 1 / -1; align-self: end; justify-self: end; align-items: flex-end; }
+    body.is-compact .flip-top span,
+    body.is-compact .flip-bottom span,
+    body.is-compact .flip-flap span,
+    body.is-compact .flip-flap-back span { font-size: calc(var(--flip-h) * .6); }
+    body.is-compact .flip-unit-label { font-size: clamp(9px, .6vw, 11px); }
+    body.is-compact .sep { font-size: calc(var(--flip-h) * .5); }
+
+    @media (prefers-reduced-motion: reduce) {
+      .flip-card.flipping .flip-flap,
+      .flip-card.flipping .flip-flap-back { animation-duration: 1ms; animation-delay: 0ms; }
+      .sep, .live-dot { animation: none; }
+    }
+
+    /* Card shadow & border */
+    .flip-card::after {
+      content: '';
+      position: absolute; inset: 0;
+      border-radius: 8px;
+      box-shadow:
+        inset 0 0 0 1px rgba(200,0,0,.18),
+        0 8px 28px rgba(0,0,0,.7);
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+
+<div class="bg"></div>
+<div class="bg-gradient"></div>
+
+<div class="stage">
+  <div class="game-eyebrow">Coming Soon</div>
+  <h1 class="game-title"><img class="game-logo untrimmed" src="https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/4115450/31e7af85afd14d7c0881a565b5b205af5b87a81c/logo_2x.png" alt="PHANTOM BLADE ZERO" onerror="this.replaceWith(document.createTextNode(this.alt))" /></h1>
+  <p class="release-label">Ra mắt: <strong>29/10/2026 · 00:00 ICT (UTC+7)</strong> &nbsp;·&nbsp; PC / PS5</p>
+
+  <div class="countdown" id="countdown">
+    <!-- Days -->
+    <div class="flip-unit">
+      <div class="flip-pair">
+        <div class="flip-card" id="d0"></div>
+        <div class="flip-card" id="d1"></div>
+      </div>
+      <span class="flip-unit-label">Ngày</span>
+    </div>
+
+    <div class="sep">:</div>
+
+    <!-- Hours -->
+    <div class="flip-unit">
+      <div class="flip-pair">
+        <div class="flip-card" id="h0"></div>
+        <div class="flip-card" id="h1"></div>
+      </div>
+      <span class="flip-unit-label">Giờ</span>
+    </div>
+
+    <div class="sep">:</div>
+
+    <!-- Minutes -->
+    <div class="flip-unit">
+      <div class="flip-pair">
+        <div class="flip-card" id="m0"></div>
+        <div class="flip-card" id="m1"></div>
+      </div>
+      <span class="flip-unit-label">Phút</span>
+    </div>
+
+    <div class="sep">:</div>
+
+    <!-- Seconds -->
+    <div class="flip-unit">
+      <div class="flip-pair">
+        <div class="flip-card" id="s0"></div>
+        <div class="flip-card" id="s1"></div>
+      </div>
+      <span class="flip-unit-label">Giây</span>
+    </div>
+  </div>
+
+  <!-- Hiện thay cho đồng hồ + ghi chú khi countdown về 0 (JS bật class is-live trên <body>) -->
+  <div class="live" id="live">
+    <div class="live-badge"><span class="live-dot"></span>Đã ra mắt</div>
+    <button class="live-cta" id="liveCta" type="button" hidden>
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.14v14l11-7-11-7z"/></svg>
+      Mở game
+    </button>
+  </div>
+
+  <p class="note">Early Access: 28/10 22:00 ET &nbsp;·&nbsp; Giờ VN: 29/10 09:00 ICT</p>
+</div>
+
+<script>
+  // Tự cắt viền trong suốt của logo (ảnh Steam là canvas 16:9, chữ nằm giữa rất nhỏ) rồi dùng bản đã cắt.
+  // Cần CDN cho phép đọc pixel (CORS). Nếu không được → giữ nguyên cách ép theo chiều rộng (class .untrimmed).
+  (function trimLogo() {
+    const img = document.querySelector('.game-logo');
+    if (!img) return;
+    const probe = new Image();
+    probe.crossOrigin = 'anonymous';
+    probe.onload = () => {
+      try {
+        const w = probe.naturalWidth, h = probe.naturalHeight;
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        const ctx = c.getContext('2d', { willReadFrequently: true });
+        ctx.drawImage(probe, 0, 0);
+        const d = ctx.getImageData(0, 0, w, h).data;      // ném lỗi nếu canvas bị "taint"
+        let x0 = w, y0 = h, x1 = -1, y1 = -1;
+        for (let y = 0; y < h; y++) {
+          const row = y * w * 4;
+          for (let x = 0; x < w; x++) {
+            if (d[row + x * 4 + 3] > 40) {
+              if (x < x0) x0 = x; if (x > x1) x1 = x;
+              if (y < y0) y0 = y; if (y > y1) y1 = y;
+            }
+          }
+        }
+        if (x1 < 0) return;                                // ảnh trống → giữ nguyên
+        const pad = Math.round(Math.max(x1 - x0, y1 - y0) * 0.02);
+        x0 = Math.max(0, x0 - pad); y0 = Math.max(0, y0 - pad);
+        x1 = Math.min(w - 1, x1 + pad); y1 = Math.min(h - 1, y1 + pad);
+        const cw = x1 - x0 + 1, ch = y1 - y0 + 1;
+        const out = document.createElement('canvas');
+        out.width = cw; out.height = ch;
+        out.getContext('2d').drawImage(c, x0, y0, cw, ch, 0, 0, cw, ch);
+        img.src = out.toDataURL('image/png');
+        img.classList.remove('untrimmed');
+      } catch (e) { /* giữ .untrimmed */ }
+    };
+    probe.src = img.getAttribute('src');
+  })();
+</script>
+<script>
+  // Thời điểm ra mắt đọc từ <meta name="pbz-release"> (mặc định 29/10/2026 00:00 ICT).
+  // Xem thử trạng thái "đã ra mắt" khi mở file trực tiếp bằng trình duyệt: thêm ?release=2020-01-01 vào URL.
+  const RELEASE_FALLBACK = '2026-10-29T00:00:00+07:00';
+  const RELEASE = (() => {
+    const q = new URLSearchParams(location.search).get('release');
+    const m = document.querySelector('meta[name="pbz-release"]');
+    const t = new Date(q || (m && m.content) || RELEASE_FALLBACK).getTime();
+    return isNaN(t) ? new Date(RELEASE_FALLBACK).getTime() : t;
+  })();
+
+  // ── Trạng thái đếm ngược ↔ đã ra mắt ──
+  const eyebrowEl = document.querySelector('.game-eyebrow');
+  const labelEl   = document.querySelector('.release-label');
+  const COUNTDOWN_LABEL = labelEl.innerHTML;
+  const RELEASE_DATE_TXT = new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Asia/Ho_Chi_Minh' }).format(RELEASE);
+  const LIVE_LABEL = 'Đã ra mắt: <strong>' + RELEASE_DATE_TXT + '</strong> &nbsp;·&nbsp; PC / PS5';
+  let isLive = null;
+  function setLive(on) {
+    if (on === isLive) return;
+    isLive = on;
+    document.body.classList.toggle('is-live', on);
+    eyebrowEl.textContent = on ? 'Out Now' : 'Coming Soon';
+    labelEl.innerHTML = on ? LIVE_LABEL : COUNTDOWN_LABEL;
+  }
+
+  // Nút "Mở game": nhờ index.html (cha) mở game trong launcher; cha báo game có trong danh mục hay chưa thì nút mới hiện.
+  const ctaEl = document.getElementById('liveCta');
+  ctaEl.addEventListener('click', () => {
+    if (window.parent !== window) window.parent.postMessage({ source: 'pbz', type: 'open-game' }, '*');
+  });
+  // Tự động di chuyển mượt mà giữa mở rộng (căn giữa) và thu gọn (trái - phải)
+  let layoutAnimations = [];
+  function setCompactLayout(compact) {
+    if (document.body.classList.contains('is-compact') === compact) return;
+
+    const els = [...document.querySelectorAll('.game-eyebrow, .game-title, .release-label, .countdown, .live, .note')];
+    const before = new Map(els.map(el => [el, el.getBoundingClientRect()]));
+
+    layoutAnimations.forEach(a => a.cancel());
+    layoutAnimations = [];
+
+    document.body.classList.toggle('is-compact', compact);
+    void document.body.offsetWidth; // ép reflow để lấy vị trí đích
+
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduced) return;
+
+    els.forEach(el => {
+      const a = before.get(el);
+      const b = el.getBoundingClientRect();
+      if (!a.width || !a.height || !b.width || !b.height) return;
+
+      const dx = a.left - b.left;
+      const dy = a.top - b.top;
+
+      // Dịch chuyển mượt từ vị trí ban đầu đến vị trí đích (chỉ translate, không scale để tránh méo hình)
+      const anim = el.animate([
+        { transform: `translate(${dx}px, ${dy}px)` },
+        { transform: 'translate(0px, 0px)' }
+      ], {
+        duration: 500,
+        easing: 'cubic-bezier(.25, 1, .5, 1)',
+        fill: 'both'
+      });
+      anim.onfinish = () => anim.cancel();
+      layoutAnimations.push(anim);
+    });
+  }
+
+  window.addEventListener('message', (e) => {
+    if (e.source !== window.parent) return;
+    const d = e.data;
+    if (!d || d.source !== 'pbz') return;
+    if (d.type === 'game-available') ctaEl.hidden = !d.value;
+    if (d.type === 'layout-state') {
+      setCompactLayout(d.value === 'collapsed');
+    }
+  });
+
+  // Initialize each flip card with current/new display halves + flapping elements
+  function initCard(el) {
+    el.innerHTML = `
+      <div class="flip-top"><span>0</span></div>
+      <div class="flip-bottom"><span>0</span></div>
+      <div class="flip-flap"><span>0</span></div>
+      <div class="flip-flap-back"><span>0</span></div>
+    `;
+    el._current = '0';
+  }
+
+  const ids = ['d0','d1','h0','h1','m0','m1','s0','s1'];
+  ids.forEach(id => initCard(document.getElementById(id)));
+
+  function pad2(n) { return String(Math.max(0, n)).padStart(2, '0'); }
+
+  function setCard(el, digit, animate = true) {
+    if (el._current === digit) return;
+    const prev = el._current;
+    const top = el.querySelector('.flip-top span');
+    const bottom = el.querySelector('.flip-bottom span');
+    const flap = el.querySelector('.flip-flap span');
+    const flapBack = el.querySelector('.flip-flap-back span');
+
+    el._current = digit;
+    window.clearTimeout(el._finishTimer);
+    window.cancelAnimationFrame(el._raf);
+    el.classList.remove('flipping');
+
+    if (!animate) {
+      top.textContent = digit;
+      bottom.textContent = digit;
+      flap.textContent = digit;
+      flapBack.textContent = digit;
+      return;
+    }
+
+    // Flip-clock đúng thứ tự:
+    //  - nửa trên tĩnh = SỐ MỚI (lộ ra khi nắp trên lật xuống)
+    //  - nửa dưới tĩnh = SỐ CŨ  (đến cuối mới được nắp dưới đè lên bằng số mới)
+    //  - nắp trên  (flap)      = số cũ,  lật 0° → -90°
+    //  - nắp dưới  (flap-back) = số mới, lật 90° → 0°
+    bottom.textContent = prev;
+    flap.textContent = prev;
+    flapBack.textContent = digit;
+
+    // Đổi nửa trên và bật animation CÙNG một frame để không bị nháy số mới trước khi nắp hiện ra.
+    el._raf = requestAnimationFrame(() => {
+      top.textContent = digit;
+      el.classList.add('flipping');
+    });
+    el._finishTimer = window.setTimeout(() => {
+      top.textContent = digit;
+      bottom.textContent = digit;
+      el.classList.remove('flipping');
+    }, 390);
+  }
+
+  function tick() {
+    const now  = Date.now();
+    const diff = Math.max(0, RELEASE - now);
+
+    const sTotal = Math.floor(diff / 1000);
+    const d = Math.floor(sTotal / 86400);
+    const h = Math.floor((sTotal % 86400) / 3600);
+    const m = Math.floor((sTotal % 3600) / 60);
+    const s = sTotal % 60;
+
+    const dd = pad2(d), hh = pad2(h), mm = pad2(m), ss = pad2(s);
+
+    setCard(document.getElementById('d0'), dd[0]);
+    setCard(document.getElementById('d1'), dd[1]);
+    setCard(document.getElementById('h0'), hh[0]);
+    setCard(document.getElementById('h1'), hh[1]);
+    setCard(document.getElementById('m0'), mm[0]);
+    setCard(document.getElementById('m1'), mm[1]);
+    setCard(document.getElementById('s0'), ss[0]);
+    setCard(document.getElementById('s1'), ss[1]);
+
+    setLive(diff <= 0);
+  }
+
+  tick();
+  setInterval(tick, 1000);
+</script>
+</body>
+</html>

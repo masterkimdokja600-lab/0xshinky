@@ -1,0 +1,18 @@
+/* ─── 0xshinky — Viền focus chỉ hiện khi điều hướng bằng phím Tab ───
+   Viền trắng mặc định của WebView2 từng bật lên sau khi bấm chuột / thu-phóng / mở lại cửa sổ.
+   Giờ chỉ vẽ khi người dùng thật sự nhấn Tab (html.kbd-nav do focus_ring.js bật). */
+
+html:not(.kbd-nav) :focus,
+html:not(.kbd-nav) :focus-visible {
+  outline: none !important;
+}
+
+html.kbd-nav :where(button, [role="button"], a[href], summary, [tabindex]:not([tabindex="-1"])):focus-visible {
+  outline: 2px solid var(--accent, #38a9e0);
+  outline-offset: 2px;
+}
+
+/* Nút titlebar sát mép → vẽ viền vào trong để không bị cắt */
+html.kbd-nav .window-ctrl-btn:focus-visible {
+  outline-offset: -3px;
+}

@@ -1,0 +1,70 @@
+/* ─── 0xshinky — Tooltip kiểu Windows 11 (giống tooltip Wi-Fi / Pin trên taskbar) ───
+   Nền mờ acrylic, viền mảnh, bo 8px, chữ Segoe UI 12px. Tự đổi theo theme Dark/Light của app.
+   Dòng đầu = nội dung chính, các dòng sau (tách bằng \n) = chữ phụ mờ hơn, phím tắt "(F11)" tự tách thành chữ mờ. */
+
+.sk-tip {
+  --tip-bg: rgba(40, 40, 44, .86);
+  --tip-border: rgba(255, 255, 255, .10);
+  --tip-text: #f5f5f7;
+  --tip-muted: rgba(255, 255, 255, .62);
+  --tip-shadow: 0 8px 24px rgba(0, 0, 0, .42), 0 1px 3px rgba(0, 0, 0, .35);
+
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 2147483647;
+  box-sizing: border-box;
+  max-width: min(320px, calc(100vw - 16px));
+  padding: 7px 11px 8px;
+  border: 1px solid var(--tip-border);
+  border-radius: 8px;
+  background: var(--tip-bg);
+  -webkit-backdrop-filter: blur(24px) saturate(1.5);
+  backdrop-filter: blur(24px) saturate(1.5);
+  box-shadow: var(--tip-shadow);
+  color: var(--tip-text);
+  font: 400 12px/16px "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", -apple-system, system-ui, sans-serif;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+  user-select: none;
+
+  opacity: 0;
+  visibility: hidden;
+  translate: 0 3px;
+  transition: opacity .1s ease, translate .1s ease, visibility 0s linear .1s;
+}
+
+.sk-tip.top { translate: 0 -3px; }
+
+.sk-tip.show {
+  opacity: 1;
+  visibility: visible;
+  translate: 0 0;
+  transition: opacity .14s ease-out, translate .18s cubic-bezier(.16, 1, .3, 1), visibility 0s;
+}
+
+.sk-tip-key {
+  margin-left: 8px;
+  color: var(--tip-muted);
+}
+
+.sk-tip-sub {
+  margin-top: 1px;
+  color: var(--tip-muted);
+  white-space: pre-line;
+}
+
+html[data-theme="light"] .sk-tip {
+  --tip-bg: rgba(251, 251, 252, .88);
+  --tip-border: rgba(0, 0, 0, .10);
+  --tip-text: #1b1b1f;
+  --tip-muted: rgba(0, 0, 0, .58);
+  --tip-shadow: 0 8px 24px rgba(15, 23, 42, .18), 0 1px 3px rgba(15, 23, 42, .12);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-tip,
+  .sk-tip.top,
+  .sk-tip.show { translate: 0 0; transition: opacity .01s linear; }
+}

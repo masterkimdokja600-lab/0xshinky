@@ -1,0 +1,107 @@
+/* ==========================================================================
+   0xshinky - System Status Cluster (Network, Battery, Clock & Date)
+   Thiết kế chuẩn 0xoLemon (E:\007Launcher)
+   ========================================================================== */
+
+.titlebar-status-cluster {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 4px;
+  height: 38px;
+  -webkit-app-region: no-drag;
+}
+
+.titlebar-status-item {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  color: rgba(222, 229, 236, 0.85);
+  cursor: default;
+  user-select: none;
+  -webkit-app-region: no-drag;
+}
+
+.titlebar-status-item svg {
+  display: block;
+}
+
+/* Tooltip đồng bộ UI dark theme 0xshinky */
+.titlebar-status-item[data-hint]::after,
+.titlebar-clock[data-hint]::after {
+  content: attr(data-hint);
+  position: absolute;
+  top: calc(100% + 7px);
+  left: 50%;
+  transform: translateX(-50%) translateY(3px);
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(13, 21, 38, 0.94);
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  pointer-events: none;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  transition: opacity 150ms ease, transform 150ms ease;
+  z-index: 1000;
+}
+
+.titlebar-status-item[data-hint]:hover::after,
+.titlebar-clock[data-hint]:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Clock & Date Display */
+.titlebar-clock {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  min-width: 68px;
+  padding: 0 6px 0 2px;
+  line-height: 1.08;
+  cursor: default;
+  user-select: none;
+  -webkit-app-region: no-drag;
+}
+
+.titlebar-clock strong {
+  color: #ffffff;
+  font-family: 'JetBrains Mono', 'Cascadia Code', Consolas, 'Courier New', monospace;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-shadow:
+    -1px 0 rgba(56, 189, 248, 0.8),
+    1px 0 rgba(244, 63, 94, 0.7);
+}
+
+.titlebar-clock span {
+  margin-top: 2px;
+  color: #38bdf8;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  opacity: 0.88;
+}
+
+/* Battery Icon Styling */
+.titlebar-battery {
+  display: inline-flex;
+  align-items: center;
+}
+
+.titlebar-wifi {
+  display: inline-flex;
+  align-items: center;
+}

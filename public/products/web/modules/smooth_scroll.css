@@ -1,0 +1,105 @@
+/* ─── 0xshinky — hiệu ứng cuộn kiểu Adobe.com (Milo c2) ───
+   Nguồn đối chiếu: adobecom/milo → libs/c2/styles/styles.css
+     • parallax-move-up-fast : section sticky, trượt lên -35vh, lớp phủ đen tăng tới 0.75 (scroll 0 → 80vh)
+     • parallax-stagger      : thẻ nổi lên so le theo cột, easing cubic-bezier(.42, 0, 0, 1)
+   Tất cả chạy bằng CSS Scroll-Driven Animations → compositor xử lý, JS không chạm style mỗi frame. */
+
+.main-view {
+  scroll-behavior: auto !important;
+  overscroll-behavior-y: contain;
+}
+
+.modal-body,
+.sf-file-list-container,
+.custom-select-dropdown {
+  overscroll-behavior: contain;
+}
+
+/* Lướt là lúc GPU bận nhất → tạm dừng các lớp trang trí chạy vô hạn (khói, hạt, nhiễu, đom đóm…).
+   Dừng cuộn ~0.16s sau là tự chạy tiếp. */
+html.is-smooth-scrolling .hw-ember,
+html.is-smooth-scrolling .hw-mist,
+html.is-smooth-scrolling .hw-shaft,
+html.is-smooth-scrolling .hw-mote,
+html.is-smooth-scrolling .hw-grain,
+html.is-smooth-scrolling .hw-dust,
+html.is-smooth-scrolling .hw-ambient::after {
+  animation-play-state: paused !important;
+}
+
+/* Lưới game nằm trên banner đang "dính" (garage door: lưới trượt đè lên banner) */
+.grid-container {
+  position: relative;
+  z-index: 1;
+}
+
+@supports (animation-timeline: view()) {
+
+  /* Timeline đặt tên theo chính khung cuộn của app (không phải window) */
+  .main-view { scroll-timeline: --mainScroll block; }
+
+  /* ── 1. Banner: sticky + trượt lên nhanh + tối dần (parallax-move-up-fast) ──
+     --pbz-start do JS đo (vị trí banner bắt đầu dính), mặc định 90px */
+  .pbz-banner {
+    --pbz-a: var(--pbz-start, 90px);
+    position: sticky;
+    top: 0;
+    z-index: 0;
+    will-change: transform, opacity;
+    animation: pbz-move-up ease-out both, pbz-fade-out linear both;
+    animation-timeline: --mainScroll, --mainScroll;
+    animation-range:
+      var(--pbz-a) calc(var(--pbz-a) + 80vh),
+      calc(var(--pbz-a) + 36vh) calc(var(--pbz-a) + 80vh);
+  }
+
+  .pbz-hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;                 /* trên iframe, dưới nút .pbz-actions (z-index 2) */
+    background: #000;
+    opacity: 0;
+    pointer-events: none;
+    animation: pbz-dim linear both;
+    animation-timeline: --mainScroll;
+    animation-range: var(--pbz-a) calc(var(--pbz-a) + 80vh);
+  }
+
+  @keyframes pbz-move-up  { from { transform: translateY(0); } to { transform: translateY(-35vh); } }
+  @keyframes pbz-fade-out { from { opacity: 1; } to { opacity: 0; } }   /* lưới trong suốt → banner phải tắt hẳn */
+  @keyframes pbz-dim      { from { opacity: 0; } to { opacity: .75; } }
+
+  /* ── 2. Thẻ game: nổi lên so le theo cột (parallax-stagger) ──
+     Khoảng chạy ngắn (35% đầu của lúc thẻ đi vào khung): thẻ vào khung bị lệch xuống 36–120px theo cột rồi
+     "đuổi kịp" ngay, còn lúc đứng yên hàng thẻ đầu đã nằm ngoài vùng chạy → thẳng hàng, không lệch bậc thang.
+     Dùng thuộc tính `translate` riêng (không đụng `transform` của hover) và fill `backwards`
+     → xong animation là trả về trạng thái gốc, không giữ layer/không cần !important cho hover. */
+  @keyframes grid-card-rise {
+    from { translate: 0 var(--sm-from, 18px); }
+    to   { translate: 0 0; }
+  }
+
+  .game-grid .game-card {
+    --sm-from: calc(36px + var(--sm-col, 0) * 12px);
+    animation: grid-card-rise cubic-bezier(.42, 0, 0, 1) backwards;
+    animation-timeline: view(block);
+    animation-range: entry 0% entry 35%;
+  }
+
+  /* Theme Halloween đã có animation riêng trên .game-card (hw-card-in) → ghép cả hai, không ghi đè nhau */
+  html[data-halloween="on"] .game-grid .game-card {
+    animation:
+      hw-card-in .6s cubic-bezier(.16, 1, .3, 1) calc(min(var(--i, 0), 12) * 35ms) backwards,
+      grid-card-rise cubic-bezier(.42, 0, 0, 1) backwards;
+    animation-timeline: auto, view(block);
+    animation-range: normal, entry 0% entry 35%;
+  }
+}
+
+/* Giảm chuyển động (Windows: Hiệu ứng động = Tắt) → như Adobe: bỏ hết, banner đứng yên */
+@media (prefers-reduced-motion: reduce) {
+  .pbz-banner { position: static !important; animation: none !important; }
+  .pbz-hero::after,
+  .game-grid .game-card { animation: none !important; }
+}

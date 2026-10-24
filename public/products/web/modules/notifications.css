@@ -1,0 +1,392 @@
+/* ==========================================================================
+   0xshinky - Notification System (Đồng bộ Theme 100% với 0xshinky)
+   ========================================================================== */
+
+/* Anchor trên Titlebar */
+.titlebar-notif-anchor {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 38px;
+  z-index: 100;
+}
+
+/* Nút chuông đồng bộ với .window-ctrl-btn */
+.titlebar-notif-btn {
+  width: 44px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  position: relative;
+  transition: background-color 0.12s, color 0.12s;
+  -webkit-app-region: no-drag;
+}
+
+.titlebar-notif-btn:hover {
+  background: var(--titlebar-hover);
+  color: var(--text-main);
+}
+
+/* Badge số lượng thông báo */
+.notif-badge {
+  position: absolute;
+  top: 6px;
+  right: 7px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 99px;
+  background: var(--accent, #0284c7);
+  color: var(--accent-fg, #ffffff);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+}
+
+.notif-badge[hidden] {
+  display: none !important;
+}
+
+/* Popover danh sách thông báo - MẶC ĐỊNH ẨN */
+.notification-popover {
+  display: none;
+  position: absolute;
+  z-index: 12000;
+  top: 38px;
+  right: 0;
+  width: 370px;
+  max-width: calc(100vw - 24px);
+  max-height: 500px;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  color: var(--text-main);
+  background: var(--dropdown-bg, var(--bg-surface));
+  backdrop-filter: blur(16px);
+  box-shadow: var(--dropdown-shadow, 0 16px 36px rgba(0, 0, 0, 0.45));
+  animation: notifSlideDown 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  -webkit-app-region: no-drag;
+}
+
+/* Khi mở popover */
+.notification-popover.active {
+  display: flex;
+}
+
+/* Khi có thuộc tính hidden */
+.notification-popover[hidden] {
+  display: none !important;
+}
+
+@keyframes notifSlideDown {
+  from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.notification-popover > header {
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+}
+
+.notification-popover header > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.notification-popover h2 {
+  margin: 0;
+  color: var(--text-main);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.notification-popover header .unread-pill {
+  padding: 2px 7px;
+  border-radius: 99px;
+  color: var(--accent);
+  background: var(--card-hover, rgba(2, 132, 199, 0.12));
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.notification-popover header .unread-pill[hidden] {
+  display: none !important;
+}
+
+.notification-popover header button.btn-close-popover {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  color: var(--text-muted);
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  pointer-events: auto;
+  font-size: 13px;
+}
+
+.notification-popover header button.btn-close-popover:hover {
+  color: var(--text-main);
+  background: var(--titlebar-hover);
+}
+
+/* Toolbar thao tác nhanh */
+.notification-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+}
+
+.notification-toolbar button {
+  border: 0;
+  color: var(--text-muted);
+  background: transparent;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.12s ease;
+}
+
+.notification-toolbar button:hover:not(:disabled) {
+  color: var(--text-main);
+  background: var(--titlebar-hover);
+}
+
+.notification-toolbar button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* Danh sách thông báo */
+.notification-list {
+  max-height: 380px;
+  min-height: 120px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--dropdown-bg, var(--bg-surface));
+}
+
+.notification-list::-webkit-scrollbar {
+  width: 5px;
+}
+.notification-list::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+
+.notification-item {
+  position: relative;
+  width: 100%;
+  padding: 11px 14px;
+  border: 0;
+  border-bottom: 1px solid var(--border-subtle);
+  display: grid;
+  grid-template-columns: 34px 1fr 10px;
+  gap: 10px;
+  align-items: start;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
+
+.notification-item:hover {
+  background: var(--select-item-hover, rgba(0, 0, 0, 0.05));
+}
+
+.notification-item.is-unread {
+  background: var(--select-item-selected-bg, rgba(2, 132, 199, 0.08));
+}
+
+.notification-item.is-unread:hover {
+  background: var(--select-item-selected-bg, rgba(2, 132, 199, 0.14));
+}
+
+/* Khối Icon bên trái */
+.notif-icon-box {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.notif-icon-box.category-download { color: var(--accent); background: rgba(2, 132, 199, 0.1); border-color: rgba(2, 132, 199, 0.25); }
+.notif-icon-box.category-update   { color: #8b5cf6; background: rgba(139, 92, 246, 0.1); border-color: rgba(139, 92, 246, 0.25); }
+.notif-icon-box.category-translation { color: #10b981; background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.25); }
+.notif-icon-box.category-fix      { color: #f59e0b; background: rgba(245, 158, 11, 0.1); border-color: rgba(245, 158, 11, 0.25); }
+.notif-icon-box.category-alert    { color: #ef4444; background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.25); }
+
+.notification-item-copy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.notification-item-copy strong {
+  overflow: hidden;
+  color: var(--text-main);
+  font-size: 12px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notification-item-copy > span {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.4;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.notification-item-copy small {
+  margin-top: 2px;
+  color: var(--text-muted);
+  opacity: 0.75;
+  font-size: 10px;
+}
+
+/* Chấm báo chưa đọc */
+.notif-unread-dot {
+  width: 7px;
+  height: 7px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent);
+}
+
+/* Trạng thái trống */
+.notification-empty {
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 24px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.notification-empty svg {
+  margin-bottom: 2px;
+  color: #10b981;
+}
+
+.notification-empty strong {
+  color: var(--text-main);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.notification-empty span {
+  font-size: 11px;
+  max-width: 240px;
+  line-height: 1.45;
+}
+
+/* Toast thông báo nổi góc dưới */
+.notification-toast-stack {
+  position: fixed;
+  z-index: 15000;
+  right: 20px;
+  bottom: 20px;
+  width: 350px;
+  max-width: calc(100vw - 40px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.notification-toast {
+  pointer-events: auto;
+  display: grid;
+  grid-template-columns: 34px 1fr 22px;
+  gap: 10px;
+  align-items: start;
+  padding: 11px 13px;
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+  background: var(--toast-bg, var(--bg-surface));
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.35);
+  color: var(--text-main);
+  animation: toastSlideIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+@keyframes toastSlideIn {
+  from { opacity: 0; transform: translateX(24px) scale(0.96); }
+  to { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+.notification-toast-main {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  cursor: pointer;
+}
+
+.notification-toast-main strong {
+  font-size: 12px;
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+.notification-toast-main small {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.notification-toast-close {
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-muted);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.notification-toast-close:hover {
+  color: var(--text-main);
+  background: var(--titlebar-hover);
+}
