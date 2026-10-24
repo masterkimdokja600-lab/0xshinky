@@ -5022,7 +5022,7 @@
       <button type="button" class="titlebar-brand" id="brandRefresh" title="Làm mới ứng dụng" aria-label="Làm mới ứng dụng">
         <img src="icon.png" alt="0xshinky" class="titlebar-icon" onerror="this.style.display='none'" />
         <span class="titlebar-title">0xshinky</span>
-        <span class="titlebar-version">v4.2.2</span>
+        <span class="titlebar-version">v4.2.3</span>
       </button>
       <span class="upd-chip" id="updChip" hidden>
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
@@ -9400,7 +9400,11 @@
         '.fix-notice-title-row svg{flex:none;color:#fbbf24;}' +
         '.fix-notice-remind{display:flex;align-items:center;gap:9px;margin:14px 0 0;color:var(--text-muted);font-size:13px;cursor:pointer;user-select:none;}' +
         '.fix-notice-remind:hover{color:var(--text-main);}' +
-        '.fix-notice-remind input{width:15px;height:15px;accent-color:#22d3ee;cursor:pointer;flex:none;}';
+        '.fix-notice-remind input{width:15px;height:15px;accent-color:#22d3ee;cursor:pointer;flex:none;}' +
+        '#fixRunNoticeModal .modal-footer{gap:10px;align-items:center;}' +
+        '#fixRunNoticeModal .modal-footer .btn-secondary-action{height:40px;justify-content:center;}' +
+        '#fixRunNoticeModal .fix-notice-primary{background:var(--accent);border-color:var(--accent);color:#fff;}' +
+        '#fixRunNoticeModal .fix-notice-primary:hover{background:var(--accent);border-color:var(--accent);color:#fff;filter:brightness(1.08);}';
       document.head.appendChild(style);
       const wrap = document.createElement('div');
       wrap.innerHTML =
@@ -9418,7 +9422,7 @@
             '</div>' +
             '<div class="modal-footer">' +
               '<button type="button" class="btn-secondary-action" id="fixNoticeOpenBtn"></button>' +
-              '<button type="button" class="btn-secondary-action" id="fixNoticeOkBtn" style="min-width:120px;"></button>' +
+              '<button type="button" class="btn-secondary-action fix-notice-primary" id="fixNoticeOkBtn" style="min-width:120px;"></button>' +
             '</div>' +
           '</div>' +
         '</div>';
