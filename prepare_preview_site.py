@@ -83,7 +83,12 @@ def copy_web_assets(source_root: Path, android_dir: Path, web_dir: Path) -> set[
     files: dict[str, Path | bytes] = {}
     for path in android_dir.rglob("*"):
         if path.is_file() and not path.is_symlink():
-            files[path.relative_to(android_dir).as_posix()] = path
+            relative = path.relative_to(android_dir).as_posix()
+            # Desktop game listings are fetched from the current upstream catalogs at runtime.
+            # Keep the bundled catalog only for the Android offline-first product.
+            if relative == "catalog.json":
+                continue
+            files[relative] = path
 
     html = (source_root / "index.html").read_text(encoding="utf-8-sig")
     referenced_root_files = set()

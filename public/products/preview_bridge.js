@@ -18,8 +18,10 @@
 
   const api = {
     async get_games() {
-      const games = await readJson('./catalog.json', []);
-      if (!Array.isArray(games)) return [];
+      const response = await fetch('/api/catalog', { cache: 'no-store' });
+      if (!response.ok) throw new Error(`Game catalog request failed (${response.status})`);
+      const games = await response.json();
+      if (!Array.isArray(games)) throw new Error('Game catalog response is not a list');
       return games.map(game => {
         const copy = Object.assign({}, game);
         delete copy.install_dir;
