@@ -31,6 +31,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source-root", type=Path)
     parser.add_argument("--output-dir", type=Path)
+    parser.add_argument("--web-only", action="store_true", help="Refresh the web preview from the desktop checkout")
     return parser.parse_args()
 
 
@@ -49,6 +50,8 @@ def find_source_root(explicit: Path | None, project_root: Path) -> Path:
 
     candidates: list[Path] = []
     parent = project_root.parent
+    if is_desktop_source(project_root):
+        return project_root.resolve()
     try:
         candidates.extend(path for path in parent.iterdir() if path.is_dir())
     except OSError as error:
@@ -105,14 +108,29 @@ def patch_web_preview_html(html: str, source_root: Path) -> str:
             "escaped game card labels",
         ),
         (
-            "const crackSt = window.crackStatus[appidStr] || 'cracked';",
-            "const crackSt = window.crackStatus[appidStr] === 'uncracked' ? 'uncracked' : 'cracked';",
+            "const crackSt = g.crack_status || window.crackStatus[appidStr] || 'cracked';",
+            "const crackSt = (g.crack_status || window.crackStatus[appidStr]) === 'uncracked' ? 'uncracked' : 'cracked';",
             "validated game status class",
+        ),
+        (
+            "const platTag = (g.platform_tag || (g.is_pc_port ? 'PS4' : '')).toUpperCase();",
+            "const platTag = String(g.platform_tag || '').toUpperCase().replace(/[^A-Z0-9 _-]/g, '');",
+            "safe game platform label",
+        ),
+        (
+            'src="assets/images/placeholder.png" alt="Game Banner"',
+            'src="icon.png" alt="Game Banner"',
+            "existing image for the initial download panel",
         ),
         (
             "window.games = games = list;",
             "window.games = games = list;\n      updateGamesCount(list.length, list.length);",
             "keep live game count correct while another tab is selected",
+        ),
+        (
+            "      loadPcPortCatalog();  // Pre-load PC Port catalog song song",
+            "      if (!window.__0XSHINKY_PREVIEW_MODE__) loadPcPortCatalog();",
+            "skip native PC Port loading in the web preview",
         ),
         (
             '<img class="game-poster" data-src="${posterSrc}" alt="${g.name}" decoding="async" />',
@@ -292,15 +310,27 @@ def patch_web_preview_html(html: str, source_root: Path) -> str:
     return html
 
 
-def copy_web_assets(source_root: Path, android_dir: Path, web_dir: Path) -> set[str]:
+def copy_web_assets(source_root: Path, base_assets: Path, web_dir: Path,
+                    *, data_sources: bytes | None = None) -> set[str]:
     files: dict[str, Path | bytes] = {}
-    for path in android_dir.rglob("*"):
-        if path.is_file() and not path.is_symlink():
-            relative = path.relative_to(android_dir).as_posix()
-            # Game and translation data are fetched from desktop-configured feeds at runtime.
-            if relative in {"catalog.json", "translations.json"}:
+    # A standalone web checkout already has the browser settings. Its shared
+    # assets come directly from the desktop tree instead of an Android build.
+    if data_sources is None:
+        resources = ((base_assets, ""),)
+    else:
+        resources = tuple((source_root / name, name) for name in ("modules", "assets"))
+        defaults = json.loads((base_assets / "default_settings.json").read_bytes())
+        appearance = ("theme", "halloween", "bg_dim", "bg_fit", "bg_scale", "motion_mode")
+        browser_settings = {key: defaults[key] for key in appearance if key in defaults}
+        files["default_settings.json"] = (json.dumps(browser_settings, indent=2) + "\n").encode("utf-8")
+        files["data_sources.json"] = data_sources
+    for directory, prefix in resources:
+        for path in directory.rglob("*"):
+            if not path.is_file() or path.is_symlink():
                 continue
-            files[relative] = path
+            relative = (Path(prefix) / path.relative_to(directory)).as_posix()
+            if relative not in {"catalog.json", "translations.json"}:
+                files[relative] = path
 
     html = (source_root / "index.html").read_text(encoding="utf-8-sig")
     referenced_root_files = set()
@@ -312,7 +342,7 @@ def copy_web_assets(source_root: Path, android_dir: Path, web_dir: Path) -> set[
             continue
         if (source_root / candidate).is_file():
             referenced_root_files.add(candidate)
-    referenced_root_files.add("Halloween Pirate Skull Poster.png")
+    referenced_root_files.update(("Halloween Pirate Skull Poster.png", "phantom_blade_zero_countdown.html", "pbz-runtime-screen.png"))
     for name in referenced_root_files:
         path = source_root / name
         if path.is_file():
@@ -387,22 +417,53 @@ def copy_web_assets(source_root: Path, android_dir: Path, web_dir: Path) -> set[
     return current_files
 
 
+def web_data_sources(source_root: Path, settings_path: Path) -> bytes:
+    sys.path.insert(0, str(source_root))
+    import game_manager
+    import translations
+
+    data = json.loads(settings_path.read_bytes())
+    translation_urls = [url for _, url in translations.CATALOG_SOURCES]
+    first_translation = urlsplit(translation_urls[0])
+    data.update({
+        "catalogUrls": [f"{repo[mirror]}/catalog.json" for repo in game_manager._REPOS for mirror in ("raw", "jsdelivr")],
+        "translationUrls": translation_urls,
+        "translationPackageBase": f"{first_translation.scheme}://{first_translation.netloc}",
+        "newWindowDays": game_manager.NEW_WINDOW_DAYS,
+        "newMaxCount": game_manager.NEW_MAX_COUNT,
+    })
+    data.pop("catalogRepositories", None)
+    return json.dumps(data, ensure_ascii=False, separators=(",", ":")).encode("utf-8") + b"\n"
+
+
 def main() -> None:
     args = parse_args()
     project_root = Path(__file__).resolve().parents[1]
     source_root = find_source_root(args.source_root, project_root)
     output_dir = (args.output_dir or Path(__file__).resolve().parent / "public").resolve()
     site_root = Path(__file__).resolve().parent
+    products_dir = output_dir / "products"
+    android_dir = products_dir / "android"
+    web_dir = products_dir / "web"
+    bridge_source = site_root / "public" / "products" / "preview_bridge.js"
+
+    sync_script = project_root / "tools" / "sync_desktop_sources.py"
+    if args.web_only or not sync_script.is_file():
+        browser_assets = site_root / "public" / "products" / "web"
+        sources = web_data_sources(source_root, browser_assets / "data_sources.json")
+        web_files = copy_web_assets(source_root, browser_assets, web_dir, data_sources=sources)
+        metadata_path = products_dir / "preview-meta.json"
+        metadata = json.loads(metadata_path.read_bytes()) if metadata_path.is_file() else {"products": ["web"]}
+        metadata.update(generatedAt=datetime.now(timezone.utc).isoformat(timespec="seconds"), webFileCount=len(web_files))
+        metadata_path.write_text(json.dumps(metadata, separators=(",", ":")) + "\n", encoding="utf-8")
+        print(f"Prepared the web preview from {source_root.name}: {len(web_files)} files.")
+        return
+
     output_dir.mkdir(parents=True, exist_ok=True)
     for name in ("index.html",):
         shutil.copy2(site_root / name, output_dir / name)
 
-    products_dir = output_dir / "products"
-    android_dir = products_dir / "android"
-    web_dir = products_dir / "web"
-    bridge_source = Path(__file__).resolve().parent / "public" / "products" / "preview_bridge.js"
     android_assets = project_root / "app" / "src" / "main" / "assets"
-    sync_script = project_root / "tools" / "sync_desktop_sources.py"
     python = os.environ.get("0XSHINKY_PYTHON", sys.executable)
 
     subprocess.run(

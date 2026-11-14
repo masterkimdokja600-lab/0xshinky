@@ -20,9 +20,11 @@ const contentTypes = {
   '.jpg': 'image/jpeg',
   '.js': 'text/javascript; charset=utf-8',
   '.json': 'application/json; charset=utf-8',
+  '.mp3': 'audio/mpeg',
   '.mp4': 'video/mp4',
   '.png': 'image/png',
   '.svg': 'image/svg+xml',
+  '.wav': 'audio/wav',
   '.webm': 'video/webm',
   '.webp': 'image/webp',
   '.woff2': 'font/woff2'
@@ -46,7 +48,17 @@ async function handleTrailer(req, res, url) {
     },
     status(statusCode) {
       return {
-        json(value) {
+        async json(value) {
+          if (statusCode === 503) {
+            try {
+              const fallback = new URL('https://0xshinky.vercel.app/api/footage');
+              fallback.searchParams.set('appids', req.query.appids);
+              const response = await fetch(fallback, { signal: AbortSignal.timeout(5000) });
+              if (response.ok) return sendJson(res, 200, await response.json());
+            } catch (_) {
+              // Keep the normal Steam lookup error if the hosted API is also unavailable.
+            }
+          }
           sendJson(res, statusCode, value);
           return res;
         }

@@ -14,18 +14,18 @@ From the Android workspace, refresh the Web/Android previews from the desktop so
 .\gradlew.bat bundlePreviewSite
 ```
 
-The source folder is auto-detected beside this workspace. Set `0XSHINKY_SOURCE_DIR` or pass `--source-root` only when selecting a different valid source. When working from this repository directly, run `python prepare_preview_site.py --source-root <desktop-source-folder>`.
-
-To generate just the synchronized preview files:
+From the standalone `0xshinky-web` folder, regenerate the web preview using the parent desktop checkout:
 
 ```powershell
-python preview-site/prepare_preview_site.py
+python prepare_preview_site.py --web-only
 ```
 
-Run locally with:
+Pass `--source-root` or set `0XSHINKY_SOURCE_DIR` to use another desktop checkout. This command updates `public/products/web` and its generated metadata. The Android workspace handles the Android preview and APK.
+
+Run the site locally with:
 
 ```powershell
-node preview-site/dev-server.js
+node dev-server.js
 ```
 
 Open `http://127.0.0.1:4173`. This serves the original source UI, runtime game catalog, translations, and popup-triggered Steam details API together. Set `0XSHINKY_PREVIEW_URL` before building the Android APK when the game popup should link to the deployed preview site.
