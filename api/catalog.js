@@ -55,7 +55,8 @@ async function fetchRepositoryCatalog(mirrors) {
       });
       if (!response.ok) continue;
       const catalog = await response.json();
-      if (Array.isArray(catalog) && catalog.length) return catalog;
+      // A successful empty catalog is valid; a mirror can still have old entries.
+      if (Array.isArray(catalog)) return catalog;
     } catch (_) {
       // Try the next mirror for this repository.
     }
@@ -101,9 +102,6 @@ async function loadGames(req) {
   }
 
   const catalogs = await Promise.all(repositories.map(fetchRepositoryCatalog));
-  if (!catalogs.some(Array.isArray)) {
-    throw new Error('All desktop game catalog sources are unavailable');
-  }
   const gamesById = new Map();
 
   for (const catalog of catalogs) {
@@ -119,6 +117,9 @@ async function loadGames(req) {
       delete game.install_dir;
       gamesById.set(appid, game);
     }
+  }
+  if (!gamesById.size && catalogs.includes(null)) {
+    throw new Error('No game entries could be loaded and some catalog sources are unavailable');
   }
 
   const games = Array.from(gamesById.values());
