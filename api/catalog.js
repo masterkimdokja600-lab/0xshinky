@@ -101,8 +101,8 @@ async function loadGames(req) {
   }
 
   const catalogs = await Promise.all(repositories.map(fetchRepositoryCatalog));
-  if (catalogs.some(catalog => !Array.isArray(catalog))) {
-    throw new Error('One or more desktop game catalog sources are unavailable');
+  if (!catalogs.some(Array.isArray)) {
+    throw new Error('All desktop game catalog sources are unavailable');
   }
   const gamesById = new Map();
 
