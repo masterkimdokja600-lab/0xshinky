@@ -50,17 +50,7 @@
     return new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium' }).format(date);
   };
 
-  let catalogPromise = null;
   let desktopReleasePromise = null;
-  const getCatalog = () => {
-    if (!catalogPromise) {
-      const api = window.pywebview && window.pywebview.api;
-      catalogPromise = api && typeof api.get_games === 'function'
-        ? Promise.resolve(api.get_games()).then(list => Array.isArray(list) ? list : []).catch(() => [])
-        : Promise.resolve([]);
-    }
-    return catalogPromise;
-  };
 
   const getDesktopRelease = () => {
     if (!desktopReleasePromise) {
@@ -174,7 +164,7 @@
       const token = ++activeToken;
       lastRequestedAppId = appid;
       const title = (document.getElementById('gmTitle')?.textContent || '').trim();
-      const currentGame = (await getCatalog()).find(game => String(game.appid || game.id || '') === appid);
+      const currentGame = window.games?.find(game => String(game.appid) === appid);
       if (token !== activeToken) return;
 
       const cover = content.querySelector('#webGameCover');

@@ -4,6 +4,8 @@
   let translationCache = null;
   let translationRequest = null;
   let translationRequestVersion = 0;
+  let catalogCache = null;
+  let catalogRequest = null;
   const trailerCache = new Map();
   const trailerRequests = new Map();
 
@@ -24,16 +26,22 @@
 
   const api = {
     async get_games() {
-      const response = await fetch('/api/catalog', { cache: 'no-store' });
-      if (!response.ok) throw new Error(`Game catalog request failed (${response.status})`);
-      const games = await response.json();
-      if (!Array.isArray(games)) throw new Error('Game catalog response is not a list');
-      return games.map(game => {
-        const copy = Object.assign({}, game);
-        delete copy.install_dir;
-        copy.is_installed = false;
-        return copy;
-      });
+      if (catalogCache !== null) return catalogCache;
+      if (!catalogRequest) {
+        catalogRequest = (async () => {
+          const response = await fetch('/api/catalog', { cache: 'no-store' });
+          if (!response.ok) throw new Error(`Game catalog request failed (${response.status})`);
+          const games = await response.json();
+          if (!Array.isArray(games)) throw new Error('Game catalog response is not a list');
+          catalogCache = games.map(({install_dir, ...game}) => ({...game, is_installed: false}));
+          return catalogCache;
+        })().finally(() => { catalogRequest = null; });
+      }
+      return catalogRequest;
+    },
+    async on_game_clicked(_gameId, _name, appid) {
+      const game = (await api.get_games()).find(item => String(item.appid) === String(appid));
+      return game ? { is_core_game: true, data: game } : null;
     },
     async get_all_translations() {
       if (translationCache !== null) return translationCache;
@@ -93,11 +101,12 @@
         return '';
       }
     },
-    async get_game_trailer(appid) {
+    async get_game_trailer(appid, forceRefresh = false) {
       const id = String(appid ?? '').trim();
       if (!/^\d+$/.test(id)) return { ok: true, urls: [] };
-      if (trailerCache.has(id)) return trailerCache.get(id);
       if (trailerRequests.has(id)) return trailerRequests.get(id);
+      if (forceRefresh) trailerCache.delete(id);
+      if (trailerCache.has(id)) return trailerCache.get(id);
       const request = (async () => {
         try {
           // Fetch the selected game's Steam details only after its modal opens.
@@ -125,7 +134,10 @@
       }
     },
     async sync_games() {
-      return { status: 'preview_only' };
+      catalogCache = null;
+      const games = await api.get_games();
+      window.onGamesUpdated?.(games);
+      return { status: 'success' };
     },
     async start_download() {
       notifyPreviewOnly();
@@ -173,14 +185,21 @@
   window.__0XSHINKY_PREVIEW_MODE__ = true;
   window.__0XSHINKY_PREVIEW_CATALOG_ERROR__ = false;
   window.__0XSHINKY_PREVIEW_TRANSLATIONS_ERROR__ = false;
-  window.pywebview = window.pywebview || {};
-  window.pywebview.api = previewApi;
+
+  const attach = () => {
+    window.pywebview = window.pywebview || {};
+    window.pywebview.api = previewApi;
+  };
+  const connect = () => {
+    attach();
+    window.dispatchEvent(new Event('pywebviewready'));
+  };
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-      window.dispatchEvent(new Event('pywebviewready'));
-    }, { once: true });
+    // The Android preview's bridge can announce readiness before this listener.
+    if (window.pywebview?.api) attach();
+    document.addEventListener('DOMContentLoaded', connect, { once: true });
   } else {
-    window.setTimeout(() => window.dispatchEvent(new Event('pywebviewready')), 0);
+    connect();
   }
 })();
