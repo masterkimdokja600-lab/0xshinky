@@ -9,7 +9,7 @@
   gap: 8px;
   padding: 0 4px;
   height: 38px;
-  -webkit-app-region: no-drag;
+  /* -webkit-app-region: no-drag; */
 }
 
 .titlebar-status-item {
@@ -21,7 +21,7 @@
   color: rgba(222, 229, 236, 0.85);
   cursor: default;
   user-select: none;
-  -webkit-app-region: no-drag;
+  /* -webkit-app-region: no-drag; */
 }
 
 .titlebar-status-item svg {
@@ -70,7 +70,7 @@
   line-height: 1.08;
   cursor: default;
   user-select: none;
-  -webkit-app-region: no-drag;
+  /* -webkit-app-region: no-drag; */
 }
 
 .titlebar-clock strong {

@@ -390,3 +390,61 @@
   color: var(--text-main);
   background: var(--titlebar-hover);
 }
+
+/* Centered catalog announcement: same neutral surface / actions as shared app dialog. */
+.catalog-notice-backdrop { z-index: 100006 !important; padding: 16px; }
+.catalog-notice-card {
+  width: 460px;
+  max-width: min(460px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  padding: 28px 28px 22px;
+  overflow: auto;
+}
+.catalog-notice-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin: 5px 0 22px;
+}
+.catalog-notice-poster {
+  flex: 0 0 92px;
+  width: 92px;
+  height: 135px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg-elevated);
+}
+.catalog-notice-poster img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.catalog-notice-details { min-width: 0; flex: 1; }
+.catalog-notice-details p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.65;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.catalog-build-change {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  padding: 10px;
+  color: var(--text-main);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.catalog-build-change .catalog-build-arrow { color: var(--text-muted); }
+.catalog-build-change strong { font-weight: 700; }
+@media (max-width: 480px) {
+  .catalog-notice-card { padding: 22px 18px 18px; }
+  .catalog-notice-content { gap: 10px; }
+  .catalog-notice-poster { flex-basis: 72px; width: 72px; height: 108px; }
+}

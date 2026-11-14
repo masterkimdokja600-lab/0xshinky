@@ -6,6 +6,147 @@
   'use strict';
 
   const STORAGE_KEY = '0xshinky_notifications';
+  const RECENT_BUILD_KEY = '0xshinky_recent_build_changes';
+  const RECENT_MAX_AGE = 30 * 24 * 60 * 60 * 1000;
+  const RECENT_LIMIT = 24;
+  let modalQueue = [];
+  let modalIsOpen = false;
+  let catalogNavigationPending = false;
+  let modalRetry = null;
+
+  function getRecentBuilds() {
+    try {
+      const list = JSON.parse(localStorage.getItem(RECENT_BUILD_KEY) || '[]');
+      return Array.isArray(list) ? list.filter(x => x && x.appid && x.oldBuildId && x.newBuildId &&
+        Number.isFinite(Number(x.timestamp)) && Date.now() - Number(x.timestamp) < RECENT_MAX_AGE)
+        .slice(0, RECENT_LIMIT) : [];
+    } catch (_) { return []; }
+  }
+
+  function addRecentBuilds(updatedGames) {
+    if (!updatedGames.length) return;
+    const existing = getRecentBuilds();
+    const batch = updatedGames.map(u => ({
+      appid: String(u.game.appid), name: String(u.game.name || u.game.appid),
+      oldBuildId: String(u.oldBuildId), newBuildId: String(u.newBuildId),
+      poster_url: u.game.poster_url || '', header_url: u.game.header_url || '',
+      timestamp: Date.now()
+    }));
+    const ids = new Set(batch.map(x => x.appid));
+    const merged = batch.concat(existing.filter(x => !ids.has(String(x.appid)))).slice(0, RECENT_LIMIT);
+    try { localStorage.setItem(RECENT_BUILD_KEY, JSON.stringify(merged)); } catch (_) {}
+    if (window.updateRecentBuildMarquee) window.updateRecentBuildMarquee();
+  }
+
+  function catalogGameImage(data, kind) {
+    if (!data || !data.appid) return '';
+    const candidate = kind === 'poster' ? data.poster_url : data.header_url;
+    if (candidate && /^https?:\/\//i.test(candidate)) return candidate;
+    if (!/^\d+$/.test(String(data.appid))) return '';
+    return 'https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/' + encodeURIComponent(String(data.appid)) +
+      (kind === 'poster' ? '/library_600x900.jpg' : '/header.jpg');
+  }
+
+  /* Catalog changes get one centered, non-destructive dialog at a time.
+     All other notifications keep their lightweight corner toast. */
+  function enqueueCatalogDialog(notif) {
+    modalQueue.push(notif);
+    showNextCatalogDialog();
+  }
+
+  function showNextCatalogDialog() {
+    if (modalIsOpen || catalogNavigationPending || !modalQueue.length) return;
+    // Do not overlay an important confirmation or a currently open game/settings modal.
+    if (document.querySelector('.app-dialog-backdrop.active, #settingsModal.active, #gameModal.active')) {
+      if (!modalRetry) modalRetry = setTimeout(() => { modalRetry = null; showNextCatalogDialog(); }, 500);
+      return;
+    }
+    const notif = modalQueue.shift();
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-backdrop app-dialog-backdrop catalog-notice-backdrop';
+    overlay.setAttribute('aria-hidden', 'false');
+    const card = document.createElement('div');
+    card.className = 'modal-card app-dialog-card catalog-notice-card';
+    card.setAttribute('role', 'dialog'); card.setAttribute('aria-modal', 'true');
+    card.setAttribute('aria-label', notif.title || 'Thông báo game mới');
+    card.tabIndex = -1;
+    const title = document.createElement('h2');
+    title.className = 'app-dialog-title'; title.textContent = notif.title || 'Thông báo';
+    const content = document.createElement('div'); content.className = 'catalog-notice-content';
+    const gameData = notif.data || {};
+    const poster = catalogGameImage(gameData, 'poster');
+    if (poster) {
+      const imageWrap = document.createElement('div'); imageWrap.className = 'catalog-notice-poster';
+      const img = document.createElement('img'); img.alt = ''; img.decoding = 'async';
+      img.onload = () => imageWrap.classList.add('has-image');
+      img.onerror = () => {
+        if (!img.dataset.headerTried) {
+          img.dataset.headerTried = '1';
+          const header = catalogGameImage(gameData, 'header');
+          if (header && header !== img.src) { img.src = header; return; }
+        }
+        imageWrap.remove();
+      };
+      img.src = poster; imageWrap.appendChild(img); content.appendChild(imageWrap);
+    }
+    const details = document.createElement('div'); details.className = 'catalog-notice-details';
+    const desc = document.createElement('p'); desc.textContent = notif.message || '';
+    details.appendChild(desc);
+    if (gameData.oldBuildId && gameData.newBuildId) {
+      const version = document.createElement('div'); version.className = 'catalog-build-change';
+      const oldVersion = document.createElement('span'); oldVersion.textContent = String(gameData.oldBuildId);
+      const arrow = document.createElement('span'); arrow.className = 'catalog-build-arrow'; arrow.textContent = '→';
+      const newVersion = document.createElement('strong'); newVersion.textContent = String(gameData.newBuildId);
+      version.append(oldVersion, arrow, newVersion); details.appendChild(version);
+    } else if (gameData.newBuildId) {
+      const version = document.createElement('div'); version.className = 'catalog-build-change';
+      version.textContent = 'BuildID: ' + String(gameData.newBuildId); details.appendChild(version);
+    }
+    content.appendChild(details);
+    const actions = document.createElement('div'); actions.className = 'app-dialog-actions';
+    const close = document.createElement('button'); close.type = 'button';
+    close.className = 'app-dialog-button app-dialog-cancel'; close.textContent = 'Đóng';
+    const open = document.createElement('button'); open.type = 'button';
+    open.className = 'app-dialog-button app-dialog-approve'; open.textContent = 'Xem game';
+    if (!gameData.appid) open.hidden = true;
+    actions.append(close, open); card.append(title, content, actions); overlay.appendChild(card);
+    document.body.appendChild(overlay);
+    modalIsOpen = true;
+    const oldFocus = document.activeElement;
+    let finished = false;
+    function finish(openGame) {
+      if (finished) return;
+      finished = true;
+      document.removeEventListener('keydown', keyListener, true);
+      overlay.remove(); modalIsOpen = false;
+      markAsRead(notif.id);
+      if (oldFocus && oldFocus.isConnected && typeof oldFocus.focus === 'function') oldFocus.focus({ preventScroll: true });
+      if (openGame && gameData.appid && typeof window.openGameModalByAppId === 'function') {
+        // Do not show the next notice while Python is still selecting this game.
+        // Once details open, showNextCatalogDialog waits until the game modal closes.
+        catalogNavigationPending = true;
+        Promise.resolve().then(() => window.openGameModalByAppId(gameData.appid))
+          .catch(err => console.error('Catalog notice: could not open game', err))
+          .finally(() => { catalogNavigationPending = false; showNextCatalogDialog(); });
+      } else {
+        showNextCatalogDialog();
+      }
+    }
+    function keyListener(ev) {
+      if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); finish(false); }
+      else if (ev.key === 'Tab') {
+        const first = close, last = open.hidden ? close : open;
+        if (ev.shiftKey && document.activeElement === first) { ev.preventDefault(); last.focus(); }
+        else if (!ev.shiftKey && document.activeElement === last) { ev.preventDefault(); first.focus(); }
+      }
+    }
+    close.addEventListener('click', () => finish(false));
+    open.addEventListener('click', () => finish(true));
+    overlay.addEventListener('click', e => { if (e.target === overlay) finish(false); });
+    document.addEventListener('keydown', keyListener, true);
+    requestAnimationFrame(() => { overlay.classList.add('active'); card.focus({ preventScroll: true }); });
+  }
+
   let notifications = [];
   let isPopoverOpen = false;
 
@@ -182,7 +323,11 @@
     if (isPopoverOpen) renderList();
 
     if (showToast) {
-      triggerToast(notif);
+      if (data && (data.kind === 'catalog-new' || data.kind === 'catalog-build')) {
+        enqueueCatalogDialog(notif);
+      } else {
+        triggerToast(notif);
+      }
     }
     return notif;
   }
@@ -320,6 +465,15 @@
   // Key lưu trữ bộ đệm danh mục game để so sánh phiên bản mới
   const CATALOG_SNAPSHOT_KEY = '0xshinky_catalog_snapshot';
 
+  function buildInfo(game) {
+    const ids = Array.isArray(game.versions) ? game.versions
+      .filter(v => v && v.id != null && v.is_ready !== false && String(v.id).toLowerCase() !== 'latest')
+      .map(v => String(v.id).trim()).filter(Boolean) : [];
+    const newest = String(game.build_id || ids[0] || '').trim();
+    return { newest, ids };
+  }
+
+
   /**
    * Tự động phát hiện game mới hoặc game có phiên bản BuildID mới và phát thông báo
    */
@@ -341,13 +495,16 @@
         if (g && g.appid) {
           initSnapshot[String(g.appid)] = {
             name: g.name || '',
-            build_id: String(g.build_id || '').trim()
+            build_id: buildInfo(g).newest,
+            last_detected_build_id: buildInfo(g).newest,
+            version_ids: buildInfo(g).ids
           };
         }
       });
       try {
         localStorage.setItem(CATALOG_SNAPSHOT_KEY, JSON.stringify(initSnapshot));
       } catch (e) {}
+      if (window.updateRecentBuildMarquee) window.updateRecentBuildMarquee();
       return;
     }
 
@@ -358,22 +515,31 @@
     catalogList.forEach(g => {
       if (!g || !g.appid) return;
       const aid = String(g.appid);
-      const currBuildId = String(g.build_id || '').trim();
+      const latest = buildInfo(g);
+      const currBuildId = latest.newest;
       const currName = g.name || `App ${aid}`;
 
       if (!snapshot[aid]) {
         // Game mới được thêm vào catalog!
         newGamesAdded.push(g);
-        nextSnapshot[aid] = { name: currName, build_id: currBuildId };
+        nextSnapshot[aid] = { name: currName, build_id: currBuildId,
+          last_detected_build_id: currBuildId, version_ids: latest.ids };
       } else {
-        const prevBuildId = String(snapshot[aid].build_id || '').trim();
-        if (currBuildId && prevBuildId && currBuildId !== prevBuildId) {
-          // Game đã có nhưng vừa cập nhật BuildID mới!
-          updatedGames.push({ game: g, oldBuildId: prevBuildId, newBuildId: currBuildId });
-          nextSnapshot[aid] = { name: currName, build_id: currBuildId };
-        } else if (currBuildId && !prevBuildId) {
-          nextSnapshot[aid].build_id = currBuildId;
+        const previous = snapshot[aid];
+        const prevBuildId = String(previous.build_id || '').trim();
+        const prevSeenVersion = String(previous.last_detected_build_id || prevBuildId).trim();
+        // Also detect added version entries when catalog.build_id itself did not change.
+        const knownIds = Array.isArray(previous.version_ids) ? previous.version_ids.map(String) : null;
+        const newReadyVersion = knownIds ? latest.ids.find(id => !knownIds.includes(id)) : null;
+        const newBuildId = (currBuildId && prevBuildId && currBuildId !== prevBuildId) ? currBuildId : newReadyVersion;
+        if (newBuildId && prevSeenVersion && String(newBuildId) !== prevSeenVersion) {
+          updatedGames.push({ game: g, oldBuildId: prevSeenVersion, newBuildId: String(newBuildId) });
         }
+        nextSnapshot[aid] = {
+          name: currName, build_id: currBuildId || prevBuildId,
+          last_detected_build_id: newBuildId || prevSeenVersion,
+          version_ids: latest.ids
+        };
       }
     });
 
@@ -381,6 +547,8 @@
     try {
       localStorage.setItem(CATALOG_SNAPSHOT_KEY, JSON.stringify(nextSnapshot));
     } catch (e) {}
+
+    if (window.updateRecentBuildMarquee) window.updateRecentBuildMarquee();
 
     // 1. Thông báo game mới
     if (newGamesAdded.length > 0) {
@@ -390,7 +558,8 @@
             title: `Game mới: ${g.name}`,
             message: `Trò chơi vừa được thêm vào kho dữ liệu (BuildID: ${g.build_id || 'Mới nhất'})`,
             category: 'update',
-            data: { appid: g.appid }
+            data: { appid: g.appid, kind: 'catalog-new', newBuildId: buildInfo(g).newest,
+              poster_url: g.poster_url || '', header_url: g.header_url || '' }
           });
         });
       } else {
@@ -398,20 +567,26 @@
         addNotification({
           title: `Đã thêm ${newGamesAdded.length} trò chơi mới!`,
           message: `Các game mới: ${topNames} và ${newGamesAdded.length - 3} game khác.`,
-          category: 'update'
+          category: 'update',
+          data: { kind: 'catalog-new', poster_url: newGamesAdded[0].poster_url || '',
+            header_url: newGamesAdded[0].header_url || '', appid: newGamesAdded[0].appid,
+            newBuildId: buildInfo(newGamesAdded[0]).newest }
         });
       }
     }
 
     // 2. Thông báo phiên bản BuildID mới
     if (updatedGames.length > 0) {
+      addRecentBuilds(updatedGames);
       if (updatedGames.length <= 4) {
         updatedGames.forEach(u => {
           addNotification({
             title: `Cập nhật: ${u.game.name}`,
-            message: `Game có phiên bản BuildID mới: ${u.newBuildId} (bản cũ: ${u.oldBuildId})`,
+            message: 'Đã bổ sung phiên bản mới vào kho dữ liệu.',
             category: 'update',
-            data: { appid: u.game.appid }
+            data: { appid: u.game.appid, kind: 'catalog-build',
+              oldBuildId: u.oldBuildId, newBuildId: u.newBuildId,
+              poster_url: u.game.poster_url || '', header_url: u.game.header_url || '' }
           });
         });
       } else {
@@ -419,7 +594,11 @@
         addNotification({
           title: `${updatedGames.length} game có bản cập nhật mới!`,
           message: `Các game cập nhật: ${topNames} và ${updatedGames.length - 3} game khác.`,
-          category: 'update'
+          category: 'update',
+          data: { kind: 'catalog-build', appid: updatedGames[0].game.appid,
+            poster_url: updatedGames[0].game.poster_url || '',
+            header_url: updatedGames[0].game.header_url || '',
+            oldBuildId: updatedGames[0].oldBuildId, newBuildId: updatedGames[0].newBuildId }
         });
       }
     }
@@ -431,7 +610,8 @@
     try {
       const raw = localStorage.getItem(CATALOG_SNAPSHOT_KEY);
       const snapshot = raw ? JSON.parse(raw) : {};
-      snapshot[aid] = { name: game.name || '', build_id: String(game.build_id || '').trim() };
+      snapshot[aid] = { name: game.name || '', build_id: buildInfo(game).newest,
+        last_detected_build_id: buildInfo(game).newest, version_ids: buildInfo(game).ids };
       localStorage.setItem(CATALOG_SNAPSHOT_KEY, JSON.stringify(snapshot));
     } catch (e) {}
 
@@ -439,7 +619,8 @@
       title: `Đã thêm game: ${game.name || aid}`,
       message: `Game đã được nạp thành công vào kho (BuildID: ${game.build_id || 'Mới nhất'})`,
       category: 'download',
-      data: { appid: game.appid }
+      data: { appid: game.appid, kind: 'catalog-new', newBuildId: buildInfo(game).newest,
+        poster_url: game.poster_url || '', header_url: game.header_url || '' }
     });
   }
 
@@ -453,7 +634,8 @@
     close: closePopover,
     toggle: togglePopover,
     checkCatalogUpdates: checkCatalogUpdates,
-    notifyGameAdded: notifyGameAdded
+    notifyGameAdded: notifyGameAdded,
+    getRecentBuilds: getRecentBuilds
   };
 
   if (document.readyState === 'loading') {

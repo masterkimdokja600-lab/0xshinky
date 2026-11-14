@@ -119,6 +119,7 @@
     }
 
     function onWheel(e) {
+      if (root.dataset.motionMode === 'performance') { if (running) halt(); return; }
       if (e.defaultPrevented || e.ctrlKey || e.metaKey || reduceMotion.matches) return;
 
       let dy = e.deltaY;
@@ -190,13 +191,16 @@
         y = mv.scrollTop + dest.getBoundingClientRect().top - mv.getBoundingClientRect().top;
       }
       y = clamp(y, 0, maxScroll());
-      if (opts && opts.immediate) { halt(); write(y); return; }
+      if ((opts && opts.immediate) || root.dataset.motionMode === 'performance') { halt(); write(y); return; }
       if (!running) current = mv.scrollTop;
       target = y;
       start();
     }
     window.smoothScrollTo = smoothScrollTo;
     window.shinkyScroll = { config: CONFIG, to: smoothScrollTo, stop: halt };
+    document.addEventListener('shinky-motion-mode-changed', () => {
+      if (root.dataset.motionMode === 'performance') halt();
+    });
 
     // ── CSS Scroll-Driven Animations helpers ──
     const box = document.getElementById('gamesViewContainer');
