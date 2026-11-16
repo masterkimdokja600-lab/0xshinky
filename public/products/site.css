@@ -167,6 +167,7 @@ h1 {
 
 .preview-section { margin-top: 78px; padding-top: 20px; border-top: 1px solid #29292d; }
 .preview-section h2 { margin: 0; color: #e9e9eb; font-size: 16px; font-weight: 550; }
+.preview-screenshot { display: block; max-width: 100%; height: auto; margin-top: 24px; border: 1px solid #29292d; border-radius: 10px; }
 .preview-section p { margin: 10px 0 17px; color: #8e8e94; font-size: 13px; line-height: 1.6; }
 .preview-open { display: inline-flex; align-items: center; gap: 8px; color: #dedee1; font-size: 13px; text-decoration: none; }
 .preview-open:hover { color: #fff; }
