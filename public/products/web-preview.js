@@ -1,6 +1,21 @@
 (() => {
   'use strict';
 
+  const readLuatoolRelease = release => {
+    const executable = release?.assets?.links?.find(link =>
+      String(link?.name || '').toLowerCase() === '0xoluatool.exe'
+    );
+    const downloadUrl = new URL(executable?.direct_asset_url || executable?.url || '');
+    if (downloadUrl.origin !== 'https://gitlab.com' || downloadUrl.username || downloadUrl.password) {
+      throw new Error('Invalid 0xoLuatool download URL');
+    }
+    return {
+      version: String(release.tag_name || '').replace(/^v/i, ''),
+      publishedAt: release.released_at,
+      downloadUrl: downloadUrl.href
+    };
+  };
+
   const products = [
     {
       name: '0xshinky',
@@ -23,6 +38,17 @@
       release: '/api/android-update',
       download: '/api/android-update?download=1',
       downloadLabel: 'Tải APK Android'
+    },
+    {
+      name: '0xoLuatool',
+      platform: 'Windows',
+      summary: 'Công cụ quản lý tệp Lua cho Steam và cập nhật plugin 0xoLemon.',
+      icon: '/products/luatool-icon.png',
+      page: 'https://gitlab.com/0xshinky/0xoluatool/-/releases',
+      detailsLabel: 'Bản phát hành GitLab',
+      release: 'https://gitlab.com/api/v4/projects/87784940/releases/permalink/latest',
+      readRelease: readLuatoolRelease,
+      downloadLabel: 'Tải 0xoLuatool.exe'
     }
   ];
 
@@ -413,17 +439,21 @@
     actions.className = 'web-product-actions';
     const details = document.createElement('a');
     details.href = product.page;
-    details.textContent = 'Chi tiết';
-    const preview = document.createElement('a');
-    preview.href = product.preview;
-    preview.textContent = 'Mở preview';
+    details.textContent = product.detailsLabel || 'Chi tiết';
+    actions.append(details);
+    if (product.preview) {
+      const preview = document.createElement('a');
+      preview.href = product.preview;
+      preview.textContent = 'Mở preview';
+      actions.append(preview);
+    }
     const download = document.createElement('a');
-    download.href = product.download;
+    if (product.download) download.href = product.download;
     download.className = 'web-product-download is-disabled';
     download.textContent = product.downloadLabel;
     download.setAttribute('aria-disabled', 'true');
     download.tabIndex = -1;
-    actions.append(details, preview, download);
+    actions.append(download);
 
     card.append(head, summary, release, actions);
     return card;
@@ -495,11 +525,12 @@
         try {
           const response = await fetch(product.release, { headers: { Accept: 'application/json' }, cache: 'no-store' });
           if (!response.ok) throw new Error('Release unavailable');
-          const release = await response.json();
+          const data = await response.json();
+          const release = product.readRelease ? product.readRelease(data) : data;
           if (typeof release.version !== 'string' || !release.version.trim()) throw new Error('Invalid release');
           const published = formatDate(release.publishedAt);
           label.textContent = `Phiên bản mới nhất · v${release.version}${published ? ` · ${published}` : ''}`;
-          download.href = product.download;
+          download.href = product.download || release.downloadUrl;
           download.removeAttribute('aria-disabled');
           download.removeAttribute('tabindex');
           download.classList.remove('is-disabled');
